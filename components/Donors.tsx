@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Search, Filter, MoreVertical, Phone, Calendar, ChevronRight, AlertCircle } from 'lucide-react';
+import { Plus, Search, Filter, MoreVertical, Phone, Calendar, ChevronRight, AlertCircle, Eye } from 'lucide-react';
 import { Donor, DonorStatus, DonorType } from '../types';
 import DonorForm from './DonorForm';
 import DonorDetail from './DonorDetail';
@@ -7,7 +7,7 @@ import DonorDetail from './DonorDetail';
 // Mock Data
 const MOCK_DONORS: Donor[] = [
   { 
-    id: '1', fullName: 'María González Pérez', curp: 'GOPM900101...', birthDate: '1990-01-01', status: DonorStatus.ACTIVE, type: DonorType.HOMOLOGOUS_INTERNAL, 
+    id: '1', folio: '463-24-001', expediente: 'EXP-1001', fullName: 'María González Pérez', curp: 'GOPM900101...', birthDate: '1990-01-01', status: DonorStatus.ACTIVE, type: DonorType.HOMOLOGOUS_INTERNAL, 
     contactPhone: '55 1234 5678', lastDonationDate: '2023-11-20', registrationDate: '2023-10-15', age: 28, bmi: 22.4, consentSigned: true, 
     labResults: [
         { id:'1', testName:'VIH', result: 'No Reactivo', date: '2023-10-15' },
@@ -15,11 +15,11 @@ const MOCK_DONORS: Donor[] = [
     ]
   },
   { 
-    id: '2', fullName: 'Ana López Martínez', curp: 'LOMA920512...', birthDate: '1992-05-12', status: DonorStatus.PENDING, type: DonorType.HETEROLOGOUS, 
+    id: '2', folio: '463-24-002', expediente: 'EXP-1002', fullName: 'Ana López Martínez', curp: 'LOMA920512...', birthDate: '1992-05-12', status: DonorStatus.PENDING, type: DonorType.HETEROLOGOUS, 
     contactPhone: '722 9876 5432', registrationDate: '2023-11-22', age: 31, consentSigned: false 
   },
   { 
-    id: '3', fullName: 'Lucía Hernández Ruiz', curp: 'HERL880920...', birthDate: '1988-09-20', status: DonorStatus.REJECTED, type: DonorType.HOMOLOGOUS_INTERNAL, 
+    id: '3', folio: '463-24-003', expediente: 'EXP-1003', fullName: 'Lucía Hernández Ruiz', curp: 'HERL880920...', birthDate: '1988-09-20', status: DonorStatus.REJECTED, type: DonorType.HOMOLOGOUS_INTERNAL, 
     contactPhone: '55 5678 1234', registrationDate: '2023-09-10', age: 35, consentSigned: true,
     labResults: [
         { id:'1', testName:'VIH', result: 'Reactivo', date: '2023-09-10' }
@@ -178,17 +178,18 @@ const Donors: React.FC = () => {
                   <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center gap-2">
                        <button 
+                         onClick={() => handleDetail(donor)}
+                         className="p-2 hover:bg-blue-50 rounded-lg text-slate-400 hover:text-blue-600 transition-colors"
+                         title="Ver perfil"
+                       >
+                         <Eye size={18} />
+                       </button>
+                       <button 
                          onClick={() => handleEdit(donor)}
-                         className="p-2 hover:bg-slate-200 rounded-lg text-slate-400 hover:text-slate-600"
+                         className="p-2 hover:bg-slate-200 rounded-lg text-slate-400 hover:text-slate-600 transition-colors"
                          title="Editar"
                        >
                          <MoreVertical size={18} />
-                       </button>
-                       <button 
-                         onClick={() => handleDetail(donor)}
-                         className="p-2 hover:bg-pink-50 rounded-lg text-pink-400 hover:text-pink-600 lg:hidden"
-                       >
-                         <ChevronRight size={18} />
                        </button>
                     </div>
                   </td>

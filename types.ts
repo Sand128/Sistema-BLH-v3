@@ -44,35 +44,112 @@ export interface LabResult {
   notes?: string;
 }
 
+export interface Medication {
+  id: string;
+  name: string;
+  dose: string;
+  frequency: string;
+  reason: string;
+  startDate: string;
+  endDate?: string;
+}
+
 export interface Donor {
   id: string;
-  // Section 1: Identification
+  // --- 1. FICHA DE IDENTIFICACIÓN ---
+  folio: string; // Formato 463-24
+  expediente: string; // Número de expediente madre
+  registrationDate: string; // Fecha de llenado
   fullName: string;
   curp: string;
   birthDate: string;
   age?: number; // Calculated
+  bloodGroup?: string; // New: Grupo Sanguíneo
   occupation?: string;
   civilStatus?: string;
+  religion?: string; // New
   address?: string;
+  referenceAddress?: string; // New: Referencias domicilio
   contactPhone: string;
   hospitalId?: string;
 
-  // Section 2: Perinatal
-  registrationDate: string;
+  // --- 2. ANTECEDENTES PERINATALES ---
+  perinatalCareInstitution?: string; // New
   deliveryDate?: string;
-  gestationalAge?: number; // weeks
+  obstetricEventType?: string; // New: Tipo de evento (Parto/Cesárea/etc)
+  gestationalAge?: number; // weeks (al nacimiento)
+  infantAgeWeeks?: number; // New: Edad lactante actual
+  infantHospitalized?: boolean; // New
+  hospitalizationService?: string; // New
+  
   preGestationalWeight?: number; // kg
+  currentWeight?: number; // New
   height?: number; // cm
   bmi?: number; // Calculated
+  
+  pregnancyInfections?: boolean; // New
+  infectionsTrimester?: string; // New
+  pregnancyComplications?: string; // New
 
-  // Classification & Status
+  // --- 3. ANTECEDENTES PATOLÓGICOS PERSONALES (New Section) ---
+  risks?: {
+    transfusions: boolean;
+    tattoos: boolean;
+    piercings: boolean;
+    acupuncture: boolean;
+    needleStick: boolean; // Contacto material punzocortante
+    others: boolean;
+  };
+  // Detailed data for the risks table
+  riskDetails?: {
+    [key: string]: { specification: string; timeElapsed: string };
+  };
+  
+  habits?: {
+    alcohol: boolean;
+    tobacco: boolean;
+    coffee: boolean;
+    drugs: boolean;
+  };
+  
+  // Medication Treatment
+  takingMedication?: boolean;
+  medications?: Medication[];
+  pharmacologicalTreatment?: string; // Legacy/Fallback
+  
+  medicalObservations?: string; // General observations for section 3
+
+  // --- 4. ANTECEDENTES GINECO-OBSTÉTRICOS (New Section) ---
+  gynObs?: {
+    pregnancies: number; // Gesta
+    births: number; // Para
+    cSections: number; // Cesáreas
+    abortions: number; // Abortos
+    sexualPartners: number;
+    planningMethod?: string;
+    abnormalHistory?: string; // Antecedentes anormales (Si/No especificar)
+  };
+
+  // --- CLASIFICACIÓN Y VALIDACIÓN ---
   type: DonorType;
   status: DonorStatus;
+  rejectionReason?: string; // Motivo no aceptación
   
-  // Section 4: Labs
+  // --- 7. MOTIVO Y TIPO DE DONACIÓN ---
+  surplusMilk?: boolean; // Excedente de leche
+  donationReason?: string; // Otro motivo
+  donorCategory?: 'Interna' | 'Externa' | 'En Casa' | 'Lactario Hospitalario';
+
+  // --- 8. RESPONSABLES ---
+  staff?: {
+    interviewerName: string;
+    elaboratedByName: string;
+  };
+
+  // Section 4: Labs (Existing)
   labResults?: LabResult[];
   
-  // Section 5: Consent
+  // Section 5: Consent (Existing)
   consentSigned: boolean;
   consentDate?: string;
 

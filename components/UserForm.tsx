@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Save, X, User, Shield, Lock, Building } from 'lucide-react';
 import { User as UserType, Role } from '../types';
+import { HOSPITAL_CATALOG } from '../constants/catalogs';
 
 interface UserFormProps {
   initialData?: Partial<UserType>;
@@ -15,6 +16,7 @@ const UserForm: React.FC<UserFormProps> = ({ initialData, roles, onSubmit, onCan
     twoFactorEnabled: false,
     roles: [],
     hospitalId: '5', // Mock Hospital ID
+    hospitalName: 'Hospital Materno Perinatal "Mónica Pretelini Sáenz"', // Default
     ...initialData
   });
 
@@ -31,7 +33,6 @@ const UserForm: React.FC<UserFormProps> = ({ initialData, roles, onSubmit, onCan
       ...formData as UserType,
       id: formData.id || Math.random().toString(36).substr(2, 9),
       employeeId: formData.employeeId || `EMP-${Math.floor(Math.random()*1000)}`,
-      hospitalName: 'Hospital Mónica Pretelini' // Mock
     };
     onSubmit(newUser);
   };
@@ -105,10 +106,23 @@ const UserForm: React.FC<UserFormProps> = ({ initialData, roles, onSubmit, onCan
              </h3>
              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Hospital Asignado *</label>
-                  <div className="flex items-center gap-2 p-2 bg-slate-100 rounded-lg border border-slate-200 text-slate-600">
-                    <Building size={16} /> Hospital Mónica Pretelini
-                  </div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1 flex items-center gap-2">
+                    <Building size={14} /> Hospital Asignado *
+                  </label>
+                  <select
+                    value={formData.hospitalName || ''}
+                    onChange={(e) => setFormData({...formData, hospitalName: e.target.value})}
+                    className="w-full p-2 border border-slate-300 rounded-lg text-sm"
+                  >
+                    <option value="">Seleccione Hospital...</option>
+                    {HOSPITAL_CATALOG.map((group) => (
+                      <optgroup key={group.category} label={group.category}>
+                        {group.options.map(hospital => (
+                          <option key={hospital} value={hospital}>{hospital}</option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
                </div>
                <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Estado</label>
