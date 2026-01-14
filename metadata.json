@@ -1,0 +1,5 @@
+{
+  "name": "LactanciaEdoMex Digital",
+  "description": "Sistema de gestión administrativa para la Coordinación Estatal de Lactancia y Bancos de Leche del Estado de México. Incluye gestión de donadoras, inventario de leche, estadísticas y asistente inteligente.",
+  "requestFramePermissions": []
+}
