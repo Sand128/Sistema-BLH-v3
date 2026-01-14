@@ -1,7 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, Loader2, Info } from 'lucide-react';
+import { Send, Bot, User, Loader2, Info, BookOpen, HelpCircle, FileText } from 'lucide-react';
 import { generateAssistantResponse } from '../services/geminiService';
 import { AssistantMessage } from '../types';
+
+const HELP_TOPICS = [
+  { id: 'donors', label: 'Registro de Donadoras', prompt: 'Explícame el proceso y requisitos para registrar una nueva donadora en el sistema.' },
+  { id: 'analysis', label: 'Criterios de Análisis', prompt: '¿Cuáles son los criterios de aceptación y rechazo en el análisis fisicoquímico (Acidez, Color, Off-flavor)?' },
+  { id: 'batches', label: 'Gestión de Lotes', prompt: '¿Cómo funciona la asignación de frascos a lotes y el proceso de pasteurización?' },
+  { id: 'glossary', label: 'Glosario Técnico', prompt: 'Muéstrame el glosario de términos técnicos del BLH (Dornic, Crematocrito, PEPS).' },
+  { id: 'inventory', label: 'Reglas de Inventario', prompt: '¿Cómo funciona el sistema PEPS y el control de caducidades en almacenamiento?' },
+];
 
 const AIAssistant: React.FC = () => {
   const [input, setInput] = useState('');
@@ -9,7 +17,7 @@ const AIAssistant: React.FC = () => {
   const [messages, setMessages] = useState<AssistantMessage[]>([
     {
       role: 'model',
-      text: 'Hola. Soy el asistente virtual de la Coordinación Estatal de Lactancia. Puedo ayudarte a redactar reportes, consultar protocolos de pasteurización o analizar tendencias de donación. ¿En qué puedo ayudarte hoy?',
+      text: 'Bienvenido al Módulo de Ayuda del Banco de Leche Humana (ISEM). Estoy aquí para orientarte sobre la normatividad, criterios operativos y el uso correcto del sistema. Selecciona un tema o escribe tu duda.',
       timestamp: new Date()
     }
   ]);
@@ -23,12 +31,13 @@ const AIAssistant: React.FC = () => {
     scrollToBottom();
   }, [messages]);
 
-  const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
+  const handleSend = async (textOverride?: string) => {
+    const textToSend = textOverride || input;
+    if (!textToSend.trim() || isLoading) return;
 
     const userMessage: AssistantMessage = {
       role: 'user',
-      text: input,
+      text: textToSend,
       timestamp: new Date()
     };
 
@@ -36,13 +45,12 @@ const AIAssistant: React.FC = () => {
     setInput('');
     setIsLoading(true);
 
-    // Prepare context (Mock data for demo purposes)
+    // Provide context about the 'screen' the user might be looking at, 
+    // or general system status.
     const contextData = `
-      Resumen actual del Banco de Leche:
-      - Litros recolectados este mes: 328.5L
-      - Donadoras activas: 142
-      - Tasa de descarte: 3.8%
-      - Protocolo vigente: NOM-007-SSA2-2016
+      Sistema: Gestión Administrativa BLH - Estado de México.
+      Usuario: Personal de Salud / Administrativo.
+      Objetivo: Soporte Operativo y Normativo.
     `;
 
     const responseText = await generateAssistantResponse(userMessage.text, contextData);
@@ -62,18 +70,18 @@ const AIAssistant: React.FC = () => {
       {/* Header */}
       <div className="p-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-pink-100 rounded-lg">
-            <Bot size={20} className="text-pink-600" />
+          <div className="p-2 bg-blue-100 rounded-lg">
+            <BookOpen size={20} className="text-blue-600" />
           </div>
           <div>
-            <h3 className="font-semibold text-slate-800">Asistente Virtual</h3>
-            <p className="text-xs text-slate-500">Potenciado por Gemini 2.0</p>
+            <h3 className="font-semibold text-slate-800">Centro de Ayuda y Normatividad</h3>
+            <p className="text-xs text-slate-500">Soporte Operativo BLH - ISEM</p>
           </div>
         </div>
         <div className="group relative">
-           <Info size={18} className="text-slate-400 cursor-help" />
-           <div className="absolute right-0 top-8 w-64 p-3 bg-slate-800 text-white text-xs rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
-             El asistente tiene acceso a datos resumidos del tablero y protocolos generales. No comparta información confidencial (PII) en el chat.
+           <HelpCircle size={18} className="text-slate-400 cursor-help" />
+           <div className="absolute right-0 top-8 w-72 p-3 bg-slate-800 text-white text-xs rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+             Este módulo ofrece orientación sobre procesos y criterios. No sustituye el juicio clínico ni modifica registros automáticamente.
            </div>
         </div>
       </div>
@@ -87,18 +95,18 @@ const AIAssistant: React.FC = () => {
           >
             <div className={`
               w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0
-              ${msg.role === 'user' ? 'bg-slate-200' : 'bg-pink-100'}
+              ${msg.role === 'user' ? 'bg-slate-200' : 'bg-blue-100'}
             `}>
-              {msg.role === 'user' ? <User size={16} className="text-slate-600" /> : <Bot size={16} className="text-pink-600" />}
+              {msg.role === 'user' ? <User size={16} className="text-slate-600" /> : <Bot size={16} className="text-blue-600" />}
             </div>
             <div className={`
-              max-w-[80%] p-3 rounded-2xl text-sm leading-relaxed
+              max-w-[85%] p-3 rounded-2xl text-sm leading-relaxed
               ${msg.role === 'user' 
                 ? 'bg-slate-800 text-white rounded-tr-none' 
                 : 'bg-white border border-slate-200 text-slate-700 rounded-tl-none shadow-sm'}
             `}>
               {msg.text.split('\n').map((line, i) => (
-                <p key={i} className="mb-1 last:mb-0">{line}</p>
+                <p key={i} className="mb-1 last:mb-0 min-h-[1rem]">{line}</p>
               ))}
               <span className={`text-[10px] block mt-1 opacity-70 ${msg.role === 'user' ? 'text-slate-300' : 'text-slate-400'}`}>
                 {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -108,40 +116,57 @@ const AIAssistant: React.FC = () => {
         ))}
         {isLoading && (
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-pink-100 flex items-center justify-center">
-              <Bot size={16} className="text-pink-600" />
+            <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+              <Bot size={16} className="text-blue-600" />
             </div>
             <div className="bg-white border border-slate-200 px-4 py-3 rounded-2xl rounded-tl-none shadow-sm">
-               <Loader2 size={16} className="animate-spin text-pink-500" />
+               <Loader2 size={16} className="animate-spin text-blue-500" />
             </div>
           </div>
         )}
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Area */}
-      <div className="p-4 border-t border-slate-200 bg-white">
-        <div className="relative flex items-center">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-            placeholder="Escribe tu consulta aquí..."
-            className="w-full pl-4 pr-12 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500 focus:bg-white transition-all"
-            disabled={isLoading}
-          />
-          <button 
-            onClick={handleSend}
-            disabled={isLoading || !input.trim()}
-            className="absolute right-2 p-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 disabled:opacity-50 disabled:hover:bg-pink-600 transition-colors"
-          >
-            <Send size={18} />
-          </button>
+      {/* Quick Prompts & Input Area */}
+      <div className="bg-white border-t border-slate-200">
+        {/* Quick Topics */}
+        <div className="px-4 py-3 border-b border-slate-100 flex gap-2 overflow-x-auto no-scrollbar">
+          {HELP_TOPICS.map(topic => (
+            <button
+              key={topic.id}
+              onClick={() => handleSend(topic.prompt)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 hover:bg-blue-50 text-slate-600 hover:text-blue-700 border border-slate-200 hover:border-blue-200 rounded-full text-xs font-medium transition-colors whitespace-nowrap"
+            >
+              <FileText size={12} />
+              {topic.label}
+            </button>
+          ))}
         </div>
-        <p className="text-center text-[10px] text-slate-400 mt-2">
-          La IA puede cometer errores. Verifica la información importante con los protocolos oficiales.
-        </p>
+
+        {/* Input */}
+        <div className="p-4">
+          <div className="relative flex items-center">
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+              placeholder="Escribe tu duda sobre procesos o normatividad..."
+              className="w-full pl-4 pr-12 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+              disabled={isLoading}
+            />
+            <button 
+              onClick={() => handleSend()}
+              disabled={isLoading || !input.trim()}
+              className="absolute right-2 p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:hover:bg-blue-600 transition-colors"
+            >
+              <Send size={18} />
+            </button>
+          </div>
+          <p className="text-center text-[10px] text-slate-400 mt-2">
+            La información proporcionada es orientativa. Consulta siempre los manuales oficiales del ISEM.
+          </p>
+        </div>
       </div>
     </div>
   );
