@@ -19,7 +19,7 @@ const App: React.FC = () => {
 
   const renderView = () => {
     switch (currentView) {
-      case 'dashboard': return <Dashboard />;
+      case 'dashboard': return <Dashboard onNavigate={setCurrentView} />;
       case 'donors': return <Donors />;
       case 'jars': return <Jars />;
       case 'analysis': return <Analysis />;

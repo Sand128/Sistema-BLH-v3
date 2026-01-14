@@ -131,7 +131,11 @@ const QuickActionButton = ({ icon: Icon, label, badge, onClick, colorClass }: an
 
 // --- MAIN COMPONENT ---
 
-const Dashboard: React.FC = () => {
+interface DashboardProps {
+  onNavigate: (view: string) => void;
+}
+
+const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   const [traceabilityId, setTraceabilityId] = useState('');
 
   const handleTraceabilitySearch = (e: React.FormEvent) => {
@@ -225,24 +229,28 @@ const Dashboard: React.FC = () => {
                  icon={UserPlus} 
                  label="Nueva Donadora" 
                  badge={0} 
+                 onClick={() => onNavigate('donors')}
                  colorClass="bg-pink-100 text-pink-600"
                />
                <QuickActionButton 
                  icon={Milk} 
                  label="Registrar Extracción" 
                  badge={0} 
+                 onClick={() => onNavigate('jars')}
                  colorClass="bg-blue-100 text-blue-600"
                />
                <QuickActionButton 
                  icon={Microscope} 
                  label="Análisis Pendientes" 
                  badge={5} 
+                 onClick={() => onNavigate('analysis')}
                  colorClass="bg-purple-100 text-purple-600"
                />
                <QuickActionButton 
                  icon={Thermometer} 
                  label="Monitor Pasteurización" 
                  badge={0} 
+                 onClick={() => onNavigate('batches')}
                  colorClass="bg-emerald-100 text-emerald-600"
                />
              </div>
