@@ -1,23 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ArrowLeft, CheckCircle2, AlertTriangle, Droplet, 
-  Calendar, Thermometer, Clock, FileCheck, ArrowRight 
+  Calendar, Thermometer, Clock, FileCheck, ArrowRight, Milk
 } from 'lucide-react';
 import { Receiver, MilkBatch, MilkStatus, AdministrationRecord } from '../types';
-
-// Mock inventory for PEPS selection
-const MOCK_INVENTORY_FOR_DOSAGE: MilkBatch[] = [
-  { 
-    id: 'B1', folio: 'LP-2024-05-20-001', type: 'Heteróloga', milkType: 'Calostro' as any, 
-    volumeTotalMl: 150, status: MilkStatus.RELEASED, creationDate: '2024-05-20', expirationDate: '2024-05-30',
-    donors: [], jarIds: [] 
-  },
-  { 
-    id: 'B2', folio: 'LP-2024-05-21-002', type: 'Heteróloga', milkType: 'Madura' as any, 
-    volumeTotalMl: 200, status: MilkStatus.RELEASED, creationDate: '2024-05-21', expirationDate: '2024-11-21',
-    donors: [], jarIds: [] 
-  }
-];
 
 interface AdministrationWizardProps {
   receiver: Receiver;
@@ -29,21 +15,58 @@ const AdministrationWizard: React.FC<AdministrationWizardProps> = ({ receiver, o
   const [step, setStep] = useState(1);
   const [selectedBatch, setSelectedBatch] = useState<MilkBatch | null>(null);
   
+  // 1. Load Inventory from LocalStorage (Source of Truth)
+  const [inventory, setInventory] = useState<MilkBatch[]>(() => {
+    try {
+      const saved = localStorage.getItem('app_batches');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      console.error("Failed to load inventory for dosage", e);
+      return [];
+    }
+  });
+
   // Admin Data
   const [volumeAdmin, setVolumeAdmin] = useState(receiver.prescription?.volumePerTake || 0);
   const [volumeDiscard, setVolumeDiscard] = useState(0);
   const [discardReason, setDiscardReason] = useState('');
   const [adminTemp, setAdminTemp] = useState(16); // Ideal 16C
-  const [adminVia, setAdminVia] = useState<'Sonda Nasogástrica' | 'Oral'>('Sonda Nasogástrica');
+  const [adminVia, setAdminVia] = useState<'Sonda Nasogástrica' | 'Oral' | 'Sonda Orogástrica'>('Sonda Nasogástrica');
 
-  // Filter & Sort Inventory (PEPS)
-  const filteredInventory = MOCK_INVENTORY_FOR_DOSAGE.sort((a, b) => 
-    new Date(a.expirationDate || '').getTime() - new Date(b.expirationDate || '').getTime()
-  );
+  // 2. Filter & Sort Inventory (PEPS) - ONLY RELEASED BATCHES WITH VOLUME
+  const availableBatches = inventory
+    .filter(b => b.status === MilkStatus.RELEASED && b.volumeTotalMl > 0)
+    .sort((a, b) => new Date(a.expirationDate || '').getTime() - new Date(b.expirationDate || '').getTime());
+
+  // Calculate remaining volume dynamically for UI feedback
+  const projectedRemainingVolume = selectedBatch 
+    ? selectedBatch.volumeTotalMl - (volumeAdmin + volumeDiscard) 
+    : 0;
 
   const handleFinish = () => {
     if (!selectedBatch) return;
     
+    const totalUsed = volumeAdmin + volumeDiscard;
+
+    if (totalUsed > selectedBatch.volumeTotalMl) {
+      alert("Error: El volumen a utilizar excede el disponible en el lote.");
+      return;
+    }
+
+    // 3. Update Batch Volume in Global State (LocalStorage)
+    const updatedInventory = inventory.map(b => {
+      if (b.id === selectedBatch.id) {
+        return {
+          ...b,
+          volumeTotalMl: b.volumeTotalMl - totalUsed
+        };
+      }
+      return b;
+    });
+
+    localStorage.setItem('app_batches', JSON.stringify(updatedInventory));
+
+    // 4. Create Record
     const record: AdministrationRecord = {
       id: `ADM-${Date.now()}`,
       receiverId: receiver.id,
@@ -59,6 +82,15 @@ const AdministrationWizard: React.FC<AdministrationWizardProps> = ({ receiver, o
       temperature: adminTemp,
       via: adminVia
     };
+
+    // 5. Persist Record to LocalStorage (CRITICAL for Waste Module)
+    try {
+      const existingRecords = JSON.parse(localStorage.getItem('app_admin_records') || '[]');
+      localStorage.setItem('app_admin_records', JSON.stringify([...existingRecords, record]));
+    } catch (e) {
+      console.error("Failed to save administration record to log", e);
+    }
+    
     onComplete(record);
   };
 
@@ -94,9 +126,15 @@ const AdministrationWizard: React.FC<AdministrationWizardProps> = ({ receiver, o
                 <Droplet className="text-blue-400" size={24}/>
              </div>
 
-             <h3 className="font-bold text-slate-700">Inventario Disponible (PEPS)</h3>
+             <div className="flex justify-between items-center">
+                <h3 className="font-bold text-slate-700">Lotes Liberados Disponibles (PEPS)</h3>
+                <span className="text-xs bg-emerald-100 text-emerald-800 px-2 py-1 rounded-full font-bold">
+                  {availableBatches.length} Disponibles
+                </span>
+             </div>
+             
              <div className="space-y-3">
-               {filteredInventory.map((batch, idx) => (
+               {availableBatches.map((batch, idx) => (
                  <div 
                    key={batch.id}
                    onClick={() => setSelectedBatch(batch)}
@@ -114,7 +152,11 @@ const AdministrationWizard: React.FC<AdministrationWizardProps> = ({ receiver, o
                        </div>
                        <div>
                          <p className="font-bold text-slate-800">{batch.folio}</p>
-                         <p className="text-xs text-slate-500">{batch.type} • {batch.milkType}</p>
+                         <div className="flex items-center gap-2 text-xs text-slate-500">
+                            <span className="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">{batch.type}</span>
+                            <span>•</span>
+                            <span>{batch.milkType}</span>
+                         </div>
                        </div>
                     </div>
                     <div className="text-right">
@@ -125,6 +167,14 @@ const AdministrationWizard: React.FC<AdministrationWizardProps> = ({ receiver, o
                     </div>
                  </div>
                ))}
+               
+               {availableBatches.length === 0 && (
+                 <div className="p-8 text-center text-slate-400 border-2 border-dashed border-slate-200 rounded-xl">
+                   <Milk size={32} className="mx-auto mb-2 opacity-30"/>
+                   <p>No hay lotes liberados con volumen disponible.</p>
+                   <p className="text-xs mt-1">Verifique el módulo de Inventario o Análisis.</p>
+                 </div>
+               )}
              </div>
           </div>
         )}
@@ -132,9 +182,26 @@ const AdministrationWizard: React.FC<AdministrationWizardProps> = ({ receiver, o
         {/* STEP 2: DOSAGE RECORD */}
         {step === 2 && selectedBatch && (
           <div className="max-w-2xl mx-auto space-y-6 animate-in slide-in-from-right-4">
-            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex justify-between items-center">
-               <span className="text-sm font-bold text-slate-700">Lote Seleccionado:</span>
-               <span className="font-mono text-pink-600 bg-pink-50 px-2 py-1 rounded">{selectedBatch.folio}</span>
+            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
+               <div>
+                 <span className="text-xs font-bold text-slate-500 uppercase block mb-1">Lote Seleccionado</span>
+                 <span className="font-mono text-lg font-bold text-pink-600">{selectedBatch.folio}</span>
+               </div>
+               
+               {/* Visual Volume Feedback */}
+               <div className="flex items-center gap-3 bg-slate-50 p-2 rounded-lg border border-slate-100">
+                  <div className="text-right">
+                    <p className="text-xs text-slate-500">Disponible</p>
+                    <p className="font-bold text-slate-700">{selectedBatch.volumeTotalMl} mL</p>
+                  </div>
+                  <ArrowRight size={16} className="text-slate-300"/>
+                  <div className="text-left">
+                    <p className="text-xs text-slate-500">Restante</p>
+                    <p className={`font-bold ${projectedRemainingVolume < 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+                      {projectedRemainingVolume} mL
+                    </p>
+                  </div>
+               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -142,7 +209,7 @@ const AdministrationWizard: React.FC<AdministrationWizardProps> = ({ receiver, o
                   <label className="block text-sm font-medium text-slate-700 mb-1">Volumen Administrado (mL)</label>
                   <input type="number" 
                     value={volumeAdmin}
-                    onChange={(e) => setVolumeAdmin(parseFloat(e.target.value))}
+                    onChange={(e) => setVolumeAdmin(parseFloat(e.target.value) || 0)}
                     className="w-full p-3 border border-slate-300 rounded-lg text-lg font-bold text-slate-800"
                   />
                   {volumeAdmin > (receiver.prescription?.volumePerTake || 0) && (
@@ -156,10 +223,17 @@ const AdministrationWizard: React.FC<AdministrationWizardProps> = ({ receiver, o
                   <label className="block text-sm font-medium text-slate-700 mb-1">Volumen Desechado (mL)</label>
                   <input type="number" 
                     value={volumeDiscard}
-                    onChange={(e) => setVolumeDiscard(parseFloat(e.target.value))}
+                    onChange={(e) => setVolumeDiscard(parseFloat(e.target.value) || 0)}
                     className="w-full p-3 border border-slate-300 rounded-lg text-slate-600"
                   />
                </div>
+
+               {projectedRemainingVolume < 0 && (
+                 <div className="md:col-span-2 p-3 bg-red-50 text-red-700 rounded-lg border border-red-200 text-sm font-medium flex items-center gap-2">
+                   <AlertTriangle size={16}/>
+                   Error: El volumen total excede la disponibilidad del lote. Ajuste las cantidades.
+                 </div>
+               )}
 
                {volumeDiscard > 0 && (
                  <div className="md:col-span-2">
@@ -212,7 +286,7 @@ const AdministrationWizard: React.FC<AdministrationWizardProps> = ({ receiver, o
                <FileCheck size={32} />
              </div>
              <h3 className="text-2xl font-bold text-slate-800 mb-2">Administración Registrada</h3>
-             <p className="text-slate-500 mb-6">Se ha generado el Formato 459-24 correctamente.</p>
+             <p className="text-slate-500 mb-6">Inventario actualizado y Formato 459-24 generado.</p>
              
              <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 text-left space-y-3 mb-6">
                 <div className="flex justify-between text-sm border-b border-slate-200 pb-2">
@@ -226,6 +300,12 @@ const AdministrationWizard: React.FC<AdministrationWizardProps> = ({ receiver, o
                 <div className="flex justify-between text-sm">
                    <span className="text-slate-500">Volumen Admin</span>
                    <span className="font-bold text-emerald-600">{volumeAdmin} mL</span>
+                </div>
+                <div className="flex justify-between text-sm pt-2 border-t border-slate-200">
+                   <span className="text-slate-500">Volumen Restante Lote</span>
+                   <span className="font-bold text-slate-600">
+                     {selectedBatch ? (selectedBatch.volumeTotalMl - (volumeAdmin + volumeDiscard)) : 0} mL
+                   </span>
                 </div>
              </div>
           </div>
@@ -250,7 +330,8 @@ const AdministrationWizard: React.FC<AdministrationWizardProps> = ({ receiver, o
            {step === 2 && (
              <button 
                onClick={() => setStep(3)}
-               className="px-6 py-2 bg-pink-600 text-white font-bold hover:bg-pink-700 rounded-lg shadow-md flex items-center gap-2"
+               disabled={projectedRemainingVolume < 0}
+               className="px-6 py-2 bg-pink-600 text-white font-bold hover:bg-pink-700 rounded-lg shadow-md flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
              >
                <CheckCircle2 size={16}/> Confirmar y Registrar
              </button>

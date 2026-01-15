@@ -12,6 +12,7 @@ import Receivers from './components/Receivers';
 import Reports from './components/Reports';
 import Users from './components/Users';
 import AIAssistant from './components/AIAssistant';
+import WasteRegistry from './components/WasteRegistry'; // Import new module
 import { NotificationProvider } from './context/NotificationContext';
 
 const App: React.FC = () => {
@@ -27,6 +28,7 @@ const App: React.FC = () => {
       case 'batches': return <Batches />;
       case 'inventory': return <Inventory />;
       case 'receivers': return <Receivers />;
+      case 'waste': return <WasteRegistry />; // New Route
       case 'reports': return <Reports />;
       case 'users': return <Users />;
       case 'assistant': return <AIAssistant />;

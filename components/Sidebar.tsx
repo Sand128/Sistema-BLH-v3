@@ -11,7 +11,8 @@ import {
   HelpCircle,
   Milk,
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  Package
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -38,11 +39,12 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView, isOpen, 
       ]
     },
     { id: 'analysis', label: 'Análisis', icon: Microscope },
+    { id: 'inventory', label: 'Almacén', icon: Package }, // Renamed from Desecho/Trash2
     { id: 'receivers', label: 'Dosificación', icon: Syringe },
+    { id: 'waste', label: 'Desecho', icon: Trash2 }, // New dedicated module
     { id: 'reports', label: 'Reportes', icon: FileText },
-    { id: 'inventory', label: 'Desecho', icon: Trash2 },
     { id: 'users', label: 'Usuarios', icon: Users },
-    { id: 'auth', label: 'Autenticación', icon: Lock }, // Mapped to Users/Settings logically
+    { id: 'auth', label: 'Autenticación', icon: Lock }, 
     { id: 'assistant', label: 'Ayuda', icon: HelpCircle },
   ];
 

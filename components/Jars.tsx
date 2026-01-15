@@ -395,7 +395,11 @@ const Jars: React.FC = () => {
                       </p>
                       <p className="text-xs text-slate-500 font-mono mt-0.5">{donor.curp}</p>
                     </div>
-                    {isDisabled && <AlertTriangle size={14} className="text-amber-500" title="Inactiva o sin consentimiento"/>}
+                    {isDisabled && (
+                      <span title="Inactiva o sin consentimiento">
+                        <AlertTriangle size={14} className="text-amber-500" />
+                      </span>
+                    )}
                   </div>
                   
                   <div className="flex justify-between items-center mt-2">

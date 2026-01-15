@@ -21,6 +21,11 @@ const REPORT_TEMPLATES: ReportTemplate[] = [
     requiredParams: ['dateRange', 'hospital', 'unit'] 
   },
   { 
+    id: 'leche_no_administrada', title: 'Leche Dosificada y No Administrada', 
+    category: 'OPERATIVE', description: 'Control de mermas, sobras y trazabilidad de leche preparada no consumida.', 
+    requiredParams: ['dateRange', 'hospital', 'unit'] 
+  },
+  { 
     id: 'seguimiento_receptores', title: 'Seguimiento de Receptores', 
     category: 'CLINICAL', description: 'Evolución de peso y consumo por neonato.', 
     requiredParams: ['dateRange', 'hospital'] 
@@ -110,12 +115,12 @@ const Reports: React.FC = () => {
                  <h3 className="font-bold text-lg leading-tight mb-1">Muestras Inadecuadas</h3>
                  <p className="text-pink-100 text-xs">Formato ISEM Mensual</p>
               </div>
-              <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm cursor-pointer hover:border-pink-300 transition-all" onClick={() => handleSelectTemplate(REPORT_TEMPLATES[1])}>
+              <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm cursor-pointer hover:border-pink-300 transition-all" onClick={() => handleSelectTemplate(REPORT_TEMPLATES[2])}>
                  <div className="flex justify-between items-start mb-4">
                    <div className="p-2 bg-blue-50 text-blue-600 rounded-lg"><Layout size={20}/></div>
                  </div>
-                 <h3 className="font-bold text-slate-800 text-lg leading-tight mb-1">Actividad Diaria</h3>
-                 <p className="text-slate-500 text-xs">Operativo General</p>
+                 <h3 className="font-bold text-slate-800 text-lg leading-tight mb-1">Mermas y Desechos</h3>
+                 <p className="text-slate-500 text-xs">Leche Dosificada No Administrada</p>
               </div>
               <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm cursor-pointer hover:border-pink-300 transition-all">
                  <div className="flex justify-between items-start mb-4">

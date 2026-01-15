@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Search, Thermometer, Calendar, Clock, MapPin, Milk, Save, 
-  ArrowRight, CheckCircle2, AlertCircle, Snowflake, Box, AlertTriangle, Truck
+  ArrowRight, CheckCircle2, AlertCircle, Snowflake, Box, AlertTriangle, Truck, Droplet
 } from 'lucide-react';
 import { Donor, DonorStatus, MilkJar, MilkStatus, MilkType, DonorType } from '../types';
 import { useNotifications } from '../context/NotificationContext';
@@ -196,6 +196,8 @@ const JarForm: React.FC<JarFormProps> = ({ onSuccess, onCancel }) => {
     onSuccess(newJar);
   };
 
+  const isVolumeInvalid = (formData.volumeMl < 10 || formData.volumeMl > 150) && formData.volumeMl !== 0;
+
   return (
     <div className="bg-white rounded-xl shadow-lg border border-slate-200 flex flex-col h-[calc(100vh-140px)] max-w-5xl mx-auto">
       {/* Header */}
@@ -284,49 +286,64 @@ const JarForm: React.FC<JarFormProps> = ({ onSuccess, onCancel }) => {
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                      <div>
-                       <label className="block text-xs font-bold text-slate-500 mb-1">Volumen (mL)</label>
-                       <input 
-                         type="number" autoFocus
-                         value={formData.volumeMl}
-                         onChange={(e) => setFormData({...formData, volumeMl: parseFloat(e.target.value)})}
-                         className={`w-full p-2.5 border rounded-lg text-lg font-bold ${
-                           (formData.volumeMl < 10 || formData.volumeMl > 150) && formData.volumeMl !== 0
-                             ? 'border-red-300 bg-red-50 text-red-900 focus:ring-red-200'
-                             : 'border-slate-300 text-slate-900'
-                         }`}
-                         placeholder="10 - 150"
-                       />
-                       {((formData.volumeMl < 10 || formData.volumeMl > 150) && formData.volumeMl !== 0) && (
-                         <span className="text-xs text-red-600 font-medium">Rango válido: 10 - 150 mL</span>
+                       <label className="block text-sm font-bold text-slate-700 mb-1">Volumen (ml) *</label>
+                       <div className="relative">
+                         <Droplet className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18}/>
+                         <input 
+                           type="number" 
+                           autoFocus
+                           className={`w-full pl-10 pr-4 py-2 border rounded-lg outline-none text-lg font-bold transition-colors ${
+                             isVolumeInvalid
+                               ? 'border-red-500 focus:ring-2 focus:ring-red-200 text-red-600 bg-red-50'
+                               : 'border-slate-300 focus:ring-2 focus:ring-pink-500'
+                           }`}
+                           placeholder="0"
+                           value={formData.volumeMl}
+                           onChange={e => setFormData({...formData, volumeMl: parseFloat(e.target.value) || 0})}
+                         />
+                       </div>
+                       {isVolumeInvalid && (
+                         <p className="text-xs text-red-600 font-bold mt-1 flex items-center gap-1 animate-in slide-in-from-top-1">
+                           <AlertCircle size={12}/> El volumen debe estar entre 10mL y 150mL.
+                         </p>
                        )}
                      </div>
+
                      <div>
-                       <label className="block text-xs font-bold text-slate-500 mb-1">Tipo de Leche</label>
+                       <label className="block text-sm font-bold text-slate-700 mb-1">Tipo de Leche</label>
                        <select 
+                         className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-pink-500 outline-none bg-white"
                          value={formData.milkType}
-                         onChange={(e) => setFormData({...formData, milkType: e.target.value as any})}
-                         className="w-full p-2.5 border border-slate-300 rounded-lg"
+                         onChange={e => setFormData({...formData, milkType: e.target.value as any})}
                        >
                          {Object.values(MilkType).map(t => <option key={t} value={t}>{t}</option>)}
                        </select>
                      </div>
+
                      <div>
-                       <label className="block text-xs font-bold text-slate-500 mb-1">Fecha Extracción</label>
-                       <input 
-                         type="date"
-                         value={formData.extractionDate}
-                         onChange={(e) => setFormData({...formData, extractionDate: e.target.value})}
-                         className="w-full p-2.5 border border-slate-300 rounded-lg"
-                       />
+                       <label className="block text-sm font-bold text-slate-700 mb-1">Fecha Extracción</label>
+                       <div className="relative">
+                         <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18}/>
+                         <input 
+                           type="date"
+                           value={formData.extractionDate}
+                           onChange={(e) => setFormData({...formData, extractionDate: e.target.value})}
+                           className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-pink-500 outline-none"
+                         />
+                       </div>
                      </div>
+
                      <div>
-                       <label className="block text-xs font-bold text-slate-500 mb-1">Hora Extracción</label>
-                       <input 
-                         type="time"
-                         value={formData.extractionTime}
-                         onChange={(e) => setFormData({...formData, extractionTime: e.target.value})}
-                         className="w-full p-2.5 border border-slate-300 rounded-lg"
-                       />
+                       <label className="block text-sm font-bold text-slate-700 mb-1">Hora Extracción *</label>
+                       <div className="relative">
+                         <Clock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18}/>
+                         <input 
+                           type="time" 
+                           className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-pink-500 outline-none"
+                           value={formData.extractionTime}
+                           onChange={e => setFormData({...formData, extractionTime: e.target.value})}
+                         />
+                       </div>
                      </div>
                   </div>
                </div>
@@ -388,16 +405,23 @@ const JarForm: React.FC<JarFormProps> = ({ onSuccess, onCancel }) => {
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                      <div>
-                       <label className="block text-xs font-bold text-slate-500 mb-1">Temperatura Frasco (°C)</label>
+                       <label className="block text-sm font-bold text-slate-500 mb-1">Temperatura Recepción (°C) *</label>
                        <div className="relative">
-                         <Thermometer className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16}/>
+                         <Thermometer className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18}/>
                          <input 
                            type="number" step="0.1"
                            value={formData.receptionTemperature}
                            onChange={(e) => setFormData({...formData, receptionTemperature: parseFloat(e.target.value)})}
-                           className={`w-full pl-9 pr-4 py-2 border rounded-lg font-bold ${formData.receptionTemperature > 5 ? 'text-red-600 border-red-200 bg-red-50' : 'text-emerald-600 border-emerald-200 bg-emerald-50'}`}
+                           className={`w-full pl-10 pr-4 py-2 border rounded-lg font-bold outline-none focus:ring-2 ${
+                             formData.receptionTemperature > 5 
+                               ? 'text-red-600 border-red-200 bg-red-50 focus:ring-red-200' 
+                               : 'text-emerald-600 border-slate-300 focus:ring-pink-500'
+                           }`}
                          />
                        </div>
+                       {formData.receptionTemperature > 5 && (
+                         <p className="text-xs text-red-600 font-bold mt-1">⚠️ Temperatura elevada (>5°C)</p>
+                       )}
                      </div>
                      <div className="flex flex-col gap-2 pt-1">
                         <label className="flex items-center gap-2 cursor-pointer p-2 hover:bg-slate-50 rounded border border-transparent hover:border-slate-100">

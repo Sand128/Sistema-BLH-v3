@@ -1,33 +1,64 @@
+/**
+ * MÓDULO: Definiciones de Tipos y Modelos de Datos (Domain Layer)
+ * 
+ * PROPÓSITO:
+ * Define la estructura de datos central, enumeraciones y contratos de interfaz
+ * utilizados en toda la aplicación. Actúa como la fuente de verdad para el
+ * tipado estático y las reglas de negocio básicas.
+ * 
+ * RELACIONES PRINCIPALES:
+ * Donor (1) <--- (*) MilkJar (N)
+ * MilkJar (N) ---> (1) MilkBatch (Pooling)
+ * Receiver (1) <--- (*) AdministrationRecord
+ */
+
+// --- ENUMS: Máquinas de Estados y Clasificaciones ---
+
+/**
+ * Estado actual de la donadora en el sistema.
+ * Determina si puede realizar donaciones o si requiere intervención médica.
+ */
 export enum DonorStatus {
-  ACTIVE = 'Apta',
-  INACTIVE = 'Inactiva',
-  PENDING = 'Pendiente',
-  SUSPENDED = 'Suspendida', // Medical or temp suspension
-  REJECTED = 'No Apta' // Clinical rejection
+  ACTIVE = 'Apta',        // Puede donar activamente.
+  INACTIVE = 'Inactiva',  // Baja administrativa voluntaria o temporal.
+  PENDING = 'Pendiente',  // En proceso de registro, faltan laboratorios o entrevista.
+  SUSPENDED = 'Suspendida', // Suspensión médica temporal (ej. medicación, infección).
+  REJECTED = 'No Apta'    // Rechazo clínico definitivo (ej. serología positiva).
 }
 
+/**
+ * Clasificación de la donadora según su relación con el receptor y ubicación.
+ */
 export enum DonorType {
-  HOMOLOGOUS_INTERNAL = 'Homóloga Interna',
-  HOMOLOGOUS_EXTERNAL = 'Homóloga Externa',
-  HETEROLOGOUS = 'Heteróloga'
+  HOMOLOGOUS_INTERNAL = 'Homóloga Interna', // Madre del receptor, hospitalizada.
+  HOMOLOGOUS_EXTERNAL = 'Homóloga Externa', // Madre del receptor, en domicilio.
+  HETEROLOGOUS = 'Heteróloga'               // Donadora altruista para banco general.
 }
 
+/**
+ * Clasificación biológica de la leche según el tiempo post-parto.
+ * Crítico para la asignación nutricional adecuada al receptor.
+ */
 export enum MilkType {
-  COLOSTRUM = 'Calostro',
-  TRANSITION = 'Transición',
-  MATURE = 'Madura'
+  COLOSTRUM = 'Calostro',   // 0-7 días.
+  TRANSITION = 'Transición',// 7-14 días.
+  MATURE = 'Madura'         // >14 días.
 }
 
+/**
+ * Ciclo de vida del producto (Leche Humana) dentro del sistema.
+ * Representa el flujo: Extracción -> Análisis -> Pasteurización -> Almacén -> Distribución.
+ */
 export enum MilkStatus {
-  RAW = 'Cruda',
-  VERIFIED = 'Verificada', // Physically verified
-  TESTING = 'En Análisis', // In Physico-chemical analysis
-  ANALYZED = 'Analizada', // Passed Physico-chemical, ready for batching
-  PASTEURIZED = 'Pasteurizada',
-  DISCARDED = 'Descartada',
-  DISTRIBUTED = 'Distribuida',
-  QUARANTINE = 'En Cuarentena',
-  RELEASED = 'Liberada'
+  RAW = 'Cruda',            // Recién extraída, no pasteurizada.
+  VERIFIED = 'Verificada',  // Pasó inspección visual y olfativa (Filtro 1).
+  TESTING = 'En Análisis',  // En laboratorio físico-químico.
+  ANALYZED = 'Analizada',   // Aprobada físico-químicamente, lista para lote.
+  PASTEURIZED = 'Pasteurizada', // Proceso Holder completado.
+  DISCARDED = 'Descartada', // Eliminada por calidad o caducidad.
+  DISTRIBUTED = 'Distribuida', // Enviada a otra unidad médica.
+  QUARANTINE = 'En Cuarentena', // Pasteurizada, esperando cultivo microbiológico (48h).
+  RELEASED = 'Liberada'     // Apta para consumo humano (Microbiología negativa).
 }
 
 export enum CaloricClassification {
@@ -35,6 +66,8 @@ export enum CaloricClassification {
   NORMOCALORIC = 'Normocalórica',
   HYPERCALORIC = 'Hipercalórica'
 }
+
+// --- INTERFACES: Entidades de Datos ---
 
 export interface AppNotification {
   id: string;
@@ -46,18 +79,22 @@ export interface AppNotification {
   targetView?: string;
 }
 
+/**
+ * Resultado de pruebas serológicas o bioquímicas.
+ * Vital para el dictamen de aptitud de la donadora.
+ */
 export interface LabResult {
   id: string;
-  testName: string;
-  category?: 'BIOCHEMISTRY' | 'SEROLOGY'; // New category for grouping
+  testName: string; // Ej: VIH, VDRL, Hepatitis B
+  category?: 'BIOCHEMISTRY' | 'SEROLOGY'; 
   timing?: {
-    before: boolean;
-    during: boolean;
-    after: boolean;
+    before: boolean; // Antes del embarazo
+    during: boolean; // Durante embarazo
+    after: boolean;  // Puerperio
   };
-  result: string; // 'Reactivo', 'No Reactivo' or numeric value as string
+  result: string; // 'Reactivo', 'No Reactivo' o valor numérico
   resultDate: string;
-  isReactive?: boolean; // Helper for UI alerts
+  isReactive?: boolean; // Flag de seguridad: TRUE bloquea a la donadora automáticamente.
   notes?: string;
 }
 
@@ -71,6 +108,10 @@ export interface Medication {
   endDate?: string;
 }
 
+/**
+ * ENTIDAD PRINCIPAL: Donadora
+ * Contiene toda la información clínica, demográfica y legal.
+ */
 export interface Donor {
   id: string;
   // --- 1. FICHA DE IDENTIFICACIÓN ---
@@ -80,35 +121,35 @@ export interface Donor {
   fullName: string;
   curp: string;
   birthDate: string;
-  age?: number; // Calculated
-  bloodGroup?: string; // New: Grupo Sanguíneo
+  age?: number; // Calculado
+  bloodGroup?: string; 
   occupation?: string;
   civilStatus?: string;
-  religion?: string; // New
+  religion?: string; 
   address?: string;
-  referenceAddress?: string; // New: Referencias domicilio
+  referenceAddress?: string; 
   contactPhone: string;
   hospitalId?: string;
 
   // --- 2. ANTECEDENTES PERINATALES ---
-  perinatalCareInstitution?: string; // New
+  perinatalCareInstitution?: string; 
   deliveryDate?: string;
-  obstetricEventType?: string; // New: Tipo de evento (Parto/Cesárea/etc)
+  obstetricEventType?: string; // Parto/Cesárea
   gestationalAge?: number; // weeks (al nacimiento)
-  infantAgeWeeks?: number; // New: Edad lactante actual
-  infantHospitalized?: boolean; // New
-  hospitalizationService?: string; // New
+  infantAgeWeeks?: number; // Edad lactante actual
+  infantHospitalized?: boolean; 
+  hospitalizationService?: string; 
   
   preGestationalWeight?: number; // kg
-  currentWeight?: number; // New
+  currentWeight?: number; 
   height?: number; // cm
-  bmi?: number; // Calculated
+  bmi?: number; // Calculado: weight / height^2
   
-  pregnancyInfections?: boolean; // New
-  infectionsTrimester?: string; // New
-  pregnancyComplications?: string; // New
+  pregnancyInfections?: boolean; 
+  infectionsTrimester?: string; 
+  pregnancyComplications?: string; 
 
-  // --- 3. ANTECEDENTES PATOLÓGICOS PERSONALES (New Section) ---
+  // --- 3. ANTECEDENTES PATOLÓGICOS PERSONALES ---
   risks?: {
     transfusions: boolean;
     tattoos: boolean;
@@ -129,14 +170,14 @@ export interface Donor {
     drugs: boolean;
   };
   
-  // Medication Treatment
+  // Tratamiento Farmacológico
   takingMedication?: boolean;
   medications?: Medication[];
   pharmacologicalTreatment?: string; // Legacy/Fallback
   
-  medicalObservations?: string; // General observations for section 3
+  medicalObservations?: string; 
 
-  // --- 4. ANTECEDENTES GINECO-OBSTÉTRICOS (New Section) ---
+  // --- 4. ANTECEDENTES GINECO-OBSTÉTRICOS ---
   gynObs?: {
     pregnancies: number; // Gesta
     births: number; // Para
@@ -144,13 +185,13 @@ export interface Donor {
     abortions: number; // Abortos
     sexualPartners: number;
     planningMethod?: string;
-    abnormalHistory?: string; // Antecedentes anormales (Si/No especificar)
+    abnormalHistory?: string; 
   };
 
   // --- CLASIFICACIÓN Y VALIDACIÓN ---
   type: DonorType;
   status: DonorStatus;
-  rejectionReason?: string; // Motivo no aceptación
+  rejectionReason?: string; 
   
   // --- 7. MOTIVO Y TIPO DE DONACIÓN ---
   surplusMilk?: boolean; // Excedente de leche
@@ -178,17 +219,21 @@ export interface Donor {
 export interface TransportData {
   transportTimeMinutes: number;
   isothermicBox: boolean;
-  icePacksQty: number; // Liters/Units estimate
+  icePacksQty: number; 
   packagingState: 'Integro' | 'Dañado';
   temperatureOnArrival: number;
   receptionTime: string;
   arrivalState: 'Congelada' | 'Refrigerada';
 }
 
+/**
+ * ENTIDAD: Frasco (Unidad mínima de inventario)
+ * Representa una extracción individual de una donadora.
+ */
 export interface MilkJar {
   id: string;
   folio: string; // e.g., HO-2024-05-27-001
-  donorId: string;
+  donorId: string; // FK -> Donor
   donorName: string;
   donorType: DonorType;
   
@@ -199,21 +244,21 @@ export interface MilkJar {
   extractionPlace: 'Lactario' | 'Domicilio' | 'Centro de Acopio';
   receptionTemperature: number;
   
-  // Entry Validation
+  // Validación de Entrada (Filtro 1)
   clean: boolean;
   sealed: boolean;
   labeled: boolean;
   
-  // Logistics (External)
+  // Logística (Externa)
   transportData?: TransportData;
 
-  status: MilkStatus;
-  location?: string; // Text description or ID
+  status: MilkStatus; // State Machine
+  location?: string; 
   
   observations?: string;
   rejectionReason?: string;
   
-  // Analysis Data (Optional, populated after analysis)
+  // Datos de Análisis (Poblados tras pruebas)
   analysisData?: {
     physical: {
       color: string;
@@ -242,28 +287,32 @@ export interface StorageLocation {
   position: string; // e.g., "A1", "B2"
 }
 
+/**
+ * ENTIDAD: Lote (Agrupación de Frascos)
+ * Unidad de procesamiento para pasteurización (Pooling).
+ */
 export interface MilkBatch {
   id: string;
   folio: string; // LP-2024-05-27-001
   
-  // Pooling Info
+  // Información de Pooling
   donors: { id: string; name: string }[];
-  jarIds: string[];
+  jarIds: string[]; // FKs -> MilkJar[]
   
   type: 'Homóloga' | 'Heteróloga';
-  milkType: MilkType;
+  milkType: MilkType; // Debe ser consistente en todos los frascos
   
   volumeTotalMl: number;
   status: MilkStatus; // PASTEURIZED, QUARANTINE, RELEASED, DISCARDED
   
   // Dates
   creationDate: string;
-  expirationDate?: string;
+  expirationDate?: string; // Calculada post-pasteurización (6 meses)
   
   // Process Data
   pasteurization?: {
     date: string;
-    tempCurve: { time: number; temp: number }[]; // For charts: 0min, 5min, ... 30min
+    tempCurve: { time: number; temp: number }[]; 
     responsible: string;
     completed: boolean;
   };
@@ -271,7 +320,7 @@ export interface MilkBatch {
   microbiology?: {
     sowingDate: string;
     resultDate?: string;
-    result?: 'Negativo' | 'Positivo';
+    result?: 'Negativo' | 'Positivo'; // Positivo = Desecho
     responsible?: string;
   };
 
@@ -316,6 +365,10 @@ export interface Receiver {
   prescription?: Prescription;
 }
 
+/**
+ * Registro de administración de leche a un paciente.
+ * Crucial para la trazabilidad final y cierre del ciclo.
+ */
 export interface AdministrationRecord {
   id: string;
   receiverId: string;

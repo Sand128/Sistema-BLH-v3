@@ -1,3 +1,16 @@
+/**
+ * MÓDULO: Asistente de Creación de Lotes (Pooling Wizard)
+ * 
+ * PROPÓSITO:
+ * Guiar al usuario en el proceso de agrupación de frascos (Pooling) para crear un nuevo lote
+ * de pasteurización. Este es un punto crítico de control.
+ * 
+ * REGLAS DE NEGOCIO IMPLEMENTADAS:
+ * 1. Homogeneidad: Todos los frascos deben ser del mismo tipo de leche (Madura, Transición, etc.).
+ * 2. Límite de Donantes: Máximo 3 donantes diferentes por lote (para trazabilidad y seguridad biológica).
+ * 3. Orden PEPS: Se fuerza la selección de frascos antiguos antes que los nuevos.
+ */
+
 import React, { useState, useMemo } from 'react';
 import { 
   ArrowRight, Save, X, AlertTriangle, FlaskConical, Milk, CheckCircle2, Clock, ListOrdered
@@ -5,44 +18,56 @@ import {
 import { MilkJar, MilkStatus, MilkBatch, MilkType, DonorType } from '../types';
 
 interface BatchWizardProps {
-  availableJars: MilkJar[];
+  availableJars: MilkJar[]; // Frascos en estado 'RAW' disponibles para agrupar
   onComplete: (batch: MilkBatch) => void;
   onCancel: () => void;
 }
 
 const BatchWizard: React.FC<BatchWizardProps> = ({ availableJars, onComplete, onCancel }) => {
-  // Only 1 step now: Selection/Pooling
+  // Estado local para la selección
   const [selectedJars, setSelectedJars] = useState<MilkJar[]>([]);
   const [filterType, setFilterType] = useState<MilkType>(MilkType.MATURE);
   const [pepsError, setPepsError] = useState<string | null>(null);
   
-  // VALIDATION LOGIC
+  // --- LÓGICA DE VALIDACIÓN ---
   const uniqueDonors: string[] = Array.from(new Set(selectedJars.map(j => j.donorId)));
   const totalVolume = selectedJars.reduce((acc, j) => acc + j.volumeMl, 0);
+  
+  // REGLA: Máximo 3 donantes por pool para limitar riesgo de contaminación cruzada masiva
   const isDonorLimitExceeded = uniqueDonors.length > 3;
 
-  // PEPS: Sort Jars by Extraction Date + Time (Oldest First)
+  // --- ORDENAMIENTO PEPS ---
+  // Memoizamos el ordenamiento para no recalcular en cada render
   const sortedJars = useMemo(() => {
     return availableJars
-      .filter(j => j.milkType === filterType)
+      .filter(j => j.milkType === filterType) // Filtro estricto por tipo
       .sort((a, b) => {
+        // Orden ascendente: Fechas más antiguas primero
         const dateA = new Date(`${a.extractionDate}T${a.extractionTime}`);
         const dateB = new Date(`${b.extractionDate}T${b.extractionTime}`);
         return dateA.getTime() - dateB.getTime();
       });
   }, [availableJars, filterType]);
 
+  /**
+   * Maneja la selección/deselección de frascos aplicando reglas estrictas de PEPS.
+   * 
+   * ALGORITMO:
+   * 1. Selección: Solo permite seleccionar un frasco si todos los anteriores (más antiguos) 
+   *    ya están seleccionados.
+   * 2. Deselección: Solo permite deseleccionar si no hay frascos posteriores (más nuevos) 
+   *    seleccionados.
+   * 
+   * @param jar Frasco a interactuar
+   */
   const toggleJar = (jar: MilkJar) => {
     setPepsError(null);
     const jarDate = new Date(`${jar.extractionDate}T${jar.extractionTime}`).getTime();
     
-    // Check if currently selected
     const isSelected = selectedJars.find(j => j.id === jar.id);
 
     if (isSelected) {
-      // LOGIC: Deselection
-      // Can only deselect if it's the newest selected jar (LIFO removal to maintain FIFO block)
-      // OR stricter: Check if any NEWER jar is selected. If so, cannot deselect this one.
+      // LÓGICA DE DESELECCIÓN (LIFO visual, mantiene bloque FIFO)
       const newerSelected = selectedJars.filter(j => {
         const jDate = new Date(`${j.extractionDate}T${j.extractionTime}`).getTime();
         return jDate > jarDate;
@@ -55,8 +80,7 @@ const BatchWizard: React.FC<BatchWizardProps> = ({ availableJars, onComplete, on
 
       setSelectedJars(prev => prev.filter(j => j.id !== jar.id));
     } else {
-      // LOGIC: Selection
-      // Can only select if all OLDER jars are already selected
+      // LÓGICA DE SELECCIÓN (FIFO estricto)
       const olderUnselected = sortedJars.filter(j => {
         const jDate = new Date(`${j.extractionDate}T${j.extractionTime}`).getTime();
         const isAlreadySelected = selectedJars.find(s => s.id === j.id);
@@ -68,6 +92,7 @@ const BatchWizard: React.FC<BatchWizardProps> = ({ availableJars, onComplete, on
         return;
       }
 
+      // Validación de Tipo Cruzado (Safety Check)
       if (jar.milkType !== filterType && selectedJars.length > 0) {
         alert("No se pueden mezclar tipos de leche diferentes.");
         return;
@@ -76,11 +101,15 @@ const BatchWizard: React.FC<BatchWizardProps> = ({ availableJars, onComplete, on
     }
   };
 
+  /**
+   * Finaliza la creación del lote.
+   * Genera el objeto MilkBatch y establece el estado inicial en 'RAW' (esperando análisis).
+   */
   const handleFinish = () => {
     const isHeterologous = selectedJars.some(j => j.donorType === DonorType.HETEROLOGOUS);
     const today = new Date();
     
-    // Default expiration (will be refined in Analysis)
+    // Caducidad estimada preliminar (será refinada tras pasteurización)
     const expDate = new Date(today);
     expDate.setMonth(today.getMonth() + 6);
 
@@ -92,7 +121,7 @@ const BatchWizard: React.FC<BatchWizardProps> = ({ availableJars, onComplete, on
       type: isHeterologous ? 'Heteróloga' : 'Homóloga',
       milkType: filterType,
       volumeTotalMl: totalVolume,
-      status: MilkStatus.RAW, // Starts as RAW, waiting for Analysis module
+      status: MilkStatus.RAW, // Inicia como CRUDA -> Debe ir a Análisis
       creationDate: today.toISOString(),
       expirationDate: expDate.toISOString(),
       pasteurization: {
@@ -103,11 +132,6 @@ const BatchWizard: React.FC<BatchWizardProps> = ({ availableJars, onComplete, on
       }
     };
     onComplete(newBatch);
-  };
-
-  // Helper to get priority index
-  const getPepsIndex = (jarId: string) => {
-    return sortedJars.findIndex(j => j.id === jarId) + 1;
   };
 
   return (
@@ -129,7 +153,7 @@ const BatchWizard: React.FC<BatchWizardProps> = ({ availableJars, onComplete, on
       <div className="flex-1 overflow-y-auto p-6 bg-slate-50/50">
         <div className="animate-in fade-in slide-in-from-right-4">
            <div className="flex flex-col md:flex-row gap-6 mb-6">
-              {/* Filters & Stats */}
+              {/* Panel de Control y Filtros */}
               <div className="w-full md:w-1/3 space-y-4">
                  <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm sticky top-0">
                     <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Tipo de Leche</label>
@@ -177,7 +201,7 @@ const BatchWizard: React.FC<BatchWizardProps> = ({ availableJars, onComplete, on
                  </div>
               </div>
 
-              {/* Jar Grid */}
+              {/* Grid de Frascos Disponibles */}
               <div className="w-full md:w-2/3">
                  <div className="flex justify-between items-center mb-3">
                    <h3 className="font-bold text-slate-700 flex items-center gap-2">
@@ -193,7 +217,7 @@ const BatchWizard: React.FC<BatchWizardProps> = ({ availableJars, onComplete, on
                       const isSelected = selectedJars.some(j => j.id === jar.id);
                       const pepsPriority = index + 1;
                       
-                      // Highlight the next expected item if not selected
+                      // Highlight visual para guiar al usuario al siguiente frasco correcto (UX)
                       const isNextToSelect = !isSelected && sortedJars.slice(0, index).every(j => selectedJars.some(s => s.id === j.id));
 
                       return (
@@ -208,7 +232,7 @@ const BatchWizard: React.FC<BatchWizardProps> = ({ availableJars, onComplete, on
                                 : 'bg-slate-50 border-slate-200 opacity-70 hover:opacity-100 hover:bg-white'
                           }`}
                         >
-                           {/* PEPS Badge */}
+                           {/* Badge de Prioridad PEPS */}
                            <div className={`absolute -top-2 -left-2 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shadow-sm z-10 
                              ${isSelected ? 'bg-orange-500 text-white' : isNextToSelect ? 'bg-blue-500 text-white animate-bounce' : 'bg-slate-200 text-slate-500'}`}>
                              {pepsPriority}

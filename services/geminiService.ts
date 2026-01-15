@@ -1,7 +1,19 @@
+/**
+ * MÓDULO: Servicio de Asistente Inteligente (AI Service)
+ * 
+ * PROPÓSITO:
+ * Proporcionar una interfaz de comunicación con la API de Google Gemini (vía @google/genai).
+ * Actúa como un experto virtual en normatividad de Bancos de Leche Humana.
+ * 
+ * PATRÓN DE DISEÑO:
+ * - Adapter Pattern: Adapta la interfaz de la librería externa a una función simple `generateAssistantResponse`.
+ * - Singleton (implícito): El cliente se inicializa bajo demanda.
+ */
+
 import { GoogleGenAI } from "@google/genai";
 
-// Initialize the API client
-// Note: In a production environment, ensure the key is properly scoped or proxied.
+// Inicializa el cliente API de manera segura.
+// NOTA: En producción, las API Keys deben manejarse en el backend (Proxy) para no exponerlas al cliente.
 const getClient = () => {
   const apiKey = process.env.API_KEY || '';
   if (!apiKey) {
@@ -10,6 +22,19 @@ const getClient = () => {
   return new GoogleGenAI({ apiKey });
 };
 
+/**
+ * Genera una respuesta contextualizada utilizando el modelo Gemini Flash.
+ * 
+ * @param message - La pregunta del usuario.
+ * @param contextData - Información del estado actual de la app (pantalla, usuario) para dar contexto.
+ * @returns Promesa con el texto de respuesta.
+ * 
+ * LÓGICA DE PROMPT ENGINEERING:
+ * Se inyecta una "System Instruction" robusta que define:
+ * 1. ROL: Experto en BLH del ISEM.
+ * 2. RESTRICCIONES: No tomar decisiones clínicas, solo orientar.
+ * 3. FORMATO: Respuestas breves y técnicas.
+ */
 export const generateAssistantResponse = async (
   message: string, 
   contextData: string
@@ -55,7 +80,7 @@ export const generateAssistantResponse = async (
       contents: message,
       config: {
         systemInstruction: systemInstruction,
-        thinkingConfig: { thinkingBudget: 0 } // Speed over deep reasoning for help chat
+        thinkingConfig: { thinkingBudget: 0 } // Priorizar velocidad sobre razonamiento profundo (Chatbot)
       }
     });
 
