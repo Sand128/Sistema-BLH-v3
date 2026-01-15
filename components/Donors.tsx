@@ -10,8 +10,8 @@ const MOCK_DONORS: Donor[] = [
     id: '1', folio: '463-24-001', expediente: 'EXP-1001', fullName: 'María González Pérez', curp: 'GOPM900101...', birthDate: '1990-01-01', status: DonorStatus.ACTIVE, type: DonorType.HOMOLOGOUS_INTERNAL, 
     contactPhone: '55 1234 5678', lastDonationDate: '2023-11-20', registrationDate: '2023-10-15', age: 28, bmi: 22.4, consentSigned: true, 
     labResults: [
-        { id:'1', testName:'VIH', result: 'No Reactivo', date: '2023-10-15' },
-        { id:'2', testName:'VDRL', result: 'No Reactivo', date: '2023-10-15' }
+        { id:'1', testName:'VIH', result: 'No Reactivo', resultDate: '2023-10-15' },
+        { id:'2', testName:'VDRL', result: 'No Reactivo', resultDate: '2023-10-15' }
     ]
   },
   { 
@@ -22,7 +22,7 @@ const MOCK_DONORS: Donor[] = [
     id: '3', folio: '463-24-003', expediente: 'EXP-1003', fullName: 'Lucía Hernández Ruiz', curp: 'HERL880920...', birthDate: '1988-09-20', status: DonorStatus.REJECTED, type: DonorType.HOMOLOGOUS_INTERNAL, 
     contactPhone: '55 5678 1234', registrationDate: '2023-09-10', age: 35, consentSigned: true,
     labResults: [
-        { id:'1', testName:'VIH', result: 'Reactivo', date: '2023-09-10' }
+        { id:'1', testName:'VIH', result: 'Reactivo', resultDate: '2023-09-10' }
     ]
   },
 ];

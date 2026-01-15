@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
-import { Plus, Search, Filter, PackageCheck, FlaskConical, CheckCircle2, ChevronRight, AlertTriangle } from 'lucide-react';
-import { MilkBatch, MilkStatus, MilkType } from '../types';
+import React, { useState, useMemo } from 'react';
+import { Plus, Search, Filter, Eye, FlaskConical, CheckCircle2, AlertCircle } from 'lucide-react';
+import { MilkBatch, MilkStatus, MilkType, MilkJar, DonorType } from '../types';
 import BatchWizard from './BatchWizard';
 import BatchDetail from './BatchDetail';
 
-// Mock Batches
+// Mock Batches (Existing data)
 const MOCK_BATCHES: MilkBatch[] = [
   { 
     id: '1', folio: 'LP-2024-05-20-001', type: 'Heteróloga', milkType: MilkType.COLOSTRUM, volumeTotalMl: 150,
@@ -21,6 +21,47 @@ const MOCK_BATCHES: MilkBatch[] = [
   }
 ];
 
+// Mock Approved Jars (Source of Truth for "Ready to Batch")
+// Includes jars already used in MOCK_BATCHES (1-4) and new available ones (5-8)
+const MOCK_APPROVED_JARS: MilkJar[] = [
+  { 
+    id: '1', folio: 'HO-001', donorId: '1', donorName: 'María G.', donorType: DonorType.HOMOLOGOUS_INTERNAL,
+    volumeMl: 50, milkType: MilkType.COLOSTRUM, extractionDate: '2024-05-27', extractionTime: '10:00', extractionPlace: 'Lactario',
+    receptionTemperature: 4, status: MilkStatus.ANALYZED, history: [], clean: true, sealed: true, labeled: true
+  },
+  { 
+    id: '2', folio: 'HO-002', donorId: '1', donorName: 'María G.', donorType: DonorType.HOMOLOGOUS_INTERNAL,
+    volumeMl: 50, milkType: MilkType.COLOSTRUM, extractionDate: '2024-05-27', extractionTime: '11:00', extractionPlace: 'Lactario',
+    receptionTemperature: 4, status: MilkStatus.ANALYZED, history: [], clean: true, sealed: true, labeled: true
+  },
+  { 
+    id: '3', folio: 'HO-003', donorId: '2', donorName: 'Ana L.', donorType: DonorType.HETEROLOGOUS,
+    volumeMl: 50, milkType: MilkType.COLOSTRUM, extractionDate: '2024-05-26', extractionTime: '09:00', extractionPlace: 'Domicilio',
+    receptionTemperature: 5, status: MilkStatus.ANALYZED, history: [], clean: true, sealed: true, labeled: true
+  },
+  { 
+    id: '4', folio: 'HO-004', donorId: '3', donorName: 'Rosa M.', donorType: DonorType.HETEROLOGOUS,
+    volumeMl: 200, milkType: MilkType.MATURE, extractionDate: '2024-05-25', extractionTime: '08:00', extractionPlace: 'Domicilio',
+    receptionTemperature: 4, status: MilkStatus.ANALYZED, history: [], clean: true, sealed: true, labeled: true
+  },
+  // --- Available Jars ---
+  { 
+    id: '5', folio: 'HO-005', donorId: '4', donorName: 'Laura S.', donorType: DonorType.HETEROLOGOUS,
+    volumeMl: 100, milkType: MilkType.MATURE, extractionDate: '2024-05-28', extractionTime: '08:30', extractionPlace: 'Domicilio',
+    receptionTemperature: 4, status: MilkStatus.ANALYZED, history: [], clean: true, sealed: true, labeled: true
+  },
+  { 
+    id: '6', folio: 'HO-006', donorId: '4', donorName: 'Laura S.', donorType: DonorType.HETEROLOGOUS,
+    volumeMl: 110, milkType: MilkType.MATURE, extractionDate: '2024-05-28', extractionTime: '10:30', extractionPlace: 'Domicilio',
+    receptionTemperature: 4, status: MilkStatus.ANALYZED, history: [], clean: true, sealed: true, labeled: true
+  },
+  { 
+    id: '7', folio: 'HO-007', donorId: '5', donorName: 'Carmen V.', donorType: DonorType.HETEROLOGOUS,
+    volumeMl: 150, milkType: MilkType.MATURE, extractionDate: '2024-05-29', extractionTime: '09:00', extractionPlace: 'Domicilio',
+    receptionTemperature: 3.5, status: MilkStatus.ANALYZED, history: [], clean: true, sealed: true, labeled: true
+  }
+];
+
 type ViewState = 'LIST' | 'CREATE' | 'DETAIL';
 
 const Batches: React.FC = () => {
@@ -28,6 +69,14 @@ const Batches: React.FC = () => {
   const [batches, setBatches] = useState<MilkBatch[]>(MOCK_BATCHES);
   const [selectedBatch, setSelectedBatch] = useState<MilkBatch | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+
+  // Calculate available jars by excluding those already used in batches
+  const availableJars = useMemo(() => {
+    // Collect all jar IDs that are currently part of a batch
+    const usedJarIds = new Set(batches.flatMap(b => b.jarIds));
+    // Filter the source list to show only those NOT in the used set
+    return MOCK_APPROVED_JARS.filter(jar => !usedJarIds.has(jar.id));
+  }, [batches]);
 
   const handleCreateBatch = (newBatch: MilkBatch) => {
     setBatches([newBatch, ...batches]);
@@ -41,10 +90,10 @@ const Batches: React.FC = () => {
 
   const getStatusColor = (status: MilkStatus) => {
     switch (status) {
-      case MilkStatus.QUARANTINE: return 'bg-amber-100 text-amber-700';
-      case MilkStatus.RELEASED: return 'bg-emerald-100 text-emerald-700';
-      case MilkStatus.DISCARDED: return 'bg-red-100 text-red-700 line-through';
-      default: return 'bg-slate-100 text-slate-700';
+      case MilkStatus.QUARANTINE: return 'bg-amber-100 text-amber-700 border-amber-200';
+      case MilkStatus.RELEASED: return 'bg-emerald-100 text-emerald-700 border-emerald-200';
+      case MilkStatus.DISCARDED: return 'bg-red-100 text-red-700 border-red-200';
+      default: return 'bg-slate-100 text-slate-700 border-slate-200';
     }
   };
 
@@ -53,7 +102,13 @@ const Batches: React.FC = () => {
   );
 
   if (view === 'CREATE') {
-    return <BatchWizard onComplete={handleCreateBatch} onCancel={() => setView('LIST')} />;
+    return (
+      <BatchWizard 
+        availableJars={availableJars}
+        onComplete={handleCreateBatch} 
+        onCancel={() => setView('LIST')} 
+      />
+    );
   }
 
   if (view === 'DETAIL' && selectedBatch) {
@@ -65,103 +120,104 @@ const Batches: React.FC = () => {
        {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-slate-800">Gestión de Lotes</h2>
-          <p className="text-slate-500">Pasteurización, Cuarentena y Liberación</p>
+          <h2 className="text-2xl font-bold text-slate-800">Control de Lotes</h2>
+          <p className="text-slate-500">Administración y seguimiento de procesos de pasteurización</p>
         </div>
         <button 
           onClick={() => setView('CREATE')}
           className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow-sm transition-colors"
         >
           <Plus size={20} />
-          Formar Lote
+          Nuevo Lote
         </button>
       </div>
 
-      {/* KPIs */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
-            <div>
-               <p className="text-xs text-slate-500 uppercase font-bold">En Cuarentena</p>
-               <p className="text-2xl font-bold text-amber-500">{batches.filter(b => b.status === MilkStatus.QUARANTINE).length}</p>
-            </div>
-            <FlaskConical className="text-amber-200" size={32} />
-         </div>
-         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
-            <div>
-               <p className="text-xs text-slate-500 uppercase font-bold">Liberados (Mes)</p>
-               <p className="text-2xl font-bold text-emerald-600">{batches.filter(b => b.status === MilkStatus.RELEASED).length}</p>
-            </div>
-            <CheckCircle2 className="text-emerald-200" size={32} />
-         </div>
-      </div>
-
-      {/* List */}
+      {/* Main Table Container */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="p-4 border-b border-slate-200 flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1">
+        {/* Search Bar */}
+        <div className="p-4 border-b border-slate-200 bg-slate-50 flex gap-3">
+          <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
             <input 
               type="text" 
-              placeholder="Buscar por folio..." 
-              className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              placeholder="Buscar por número de lote..." 
+              className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <button className="px-4 py-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 flex items-center gap-2">
-            <Filter size={18} />
-            Filtros
-          </button>
         </div>
 
+        {/* Table */}
         <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead className="bg-slate-50 text-slate-600 font-medium text-sm">
+          <table className="w-full text-left border-collapse">
+            <thead className="bg-slate-100 text-slate-600 font-semibold text-xs uppercase tracking-wider border-b border-slate-200">
               <tr>
                 <th className="px-6 py-4">Folio</th>
                 <th className="px-6 py-4">Tipo</th>
-                <th className="px-6 py-4">Donantes</th>
                 <th className="px-6 py-4">Volumen</th>
-                <th className="px-6 py-4">Fecha</th>
+                <th className="px-6 py-4 text-center">Frascos</th>
                 <th className="px-6 py-4">Estado</th>
-                <th className="px-6 py-4"></th>
+                <th className="px-6 py-4">Fecha</th>
+                <th className="px-6 py-4 text-center">Acción</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-sm">
               {filteredBatches.map(batch => (
-                <tr 
-                  key={batch.id}
-                  onClick={() => { setSelectedBatch(batch); setView('DETAIL'); }}
-                  className="hover:bg-slate-50 cursor-pointer group"
-                >
-                  <td className="px-6 py-4 font-mono font-medium text-slate-700">{batch.folio}</td>
-                  <td className="px-6 py-4">{batch.type} <span className="text-slate-400">({batch.milkType})</span></td>
-                  <td className="px-6 py-4">
-                     <div className="flex -space-x-2">
-                        {batch.donors.slice(0,3).map((d,i) => (
-                           <div key={i} className="w-6 h-6 rounded-full bg-slate-200 border-2 border-white flex items-center justify-center text-[10px] text-slate-600 font-bold" title={d.name}>
-                              {d.name.charAt(0)}
-                           </div>
-                        ))}
-                     </div>
+                <tr key={batch.id} className="hover:bg-slate-50 transition-colors">
+                  <td className="px-6 py-4 font-mono font-bold text-slate-700">
+                    {batch.folio}
                   </td>
-                  <td className="px-6 py-4 font-bold text-slate-600">{batch.volumeTotalMl} mL</td>
-                  <td className="px-6 py-4 text-slate-500">{batch.creationDate.split('T')[0]}</td>
                   <td className="px-6 py-4">
-                     <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-bold ${getStatusColor(batch.status)}`}>
+                    <div className="flex flex-col">
+                      <span className="font-medium text-slate-800">{batch.type}</span>
+                      <span className="text-xs text-slate-500">{batch.milkType}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 font-medium text-slate-600">
+                    {batch.volumeTotalMl} mL
+                  </td>
+                  <td className="px-6 py-4 text-center">
+                    <span className="bg-slate-100 text-slate-600 px-2 py-1 rounded text-xs font-bold border border-slate-200">
+                      {batch.jarIds.length}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                     <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold border ${getStatusColor(batch.status)}`}>
+                        {batch.status === MilkStatus.QUARANTINE && <FlaskConical size={10} />}
+                        {batch.status === MilkStatus.RELEASED && <CheckCircle2 size={10} />}
+                        {batch.status === MilkStatus.DISCARDED && <AlertCircle size={10} />}
                         {batch.status}
                      </span>
                   </td>
-                  <td className="px-6 py-4 text-right">
-                     <ChevronRight size={18} className="text-slate-300 group-hover:text-orange-500" />
+                  <td className="px-6 py-4 text-slate-500">
+                    {batch.creationDate.split('T')[0]}
+                  </td>
+                  <td className="px-6 py-4 text-center">
+                     <button 
+                       onClick={() => { setSelectedBatch(batch); setView('DETAIL'); }}
+                       className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                       title="Ver detalle"
+                     >
+                        <Eye size={18} />
+                     </button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+          
           {filteredBatches.length === 0 && (
-             <div className="p-12 text-center text-slate-400">No se encontraron lotes.</div>
+             <div className="p-12 text-center text-slate-400 flex flex-col items-center">
+                <FlaskConical size={48} className="mb-4 opacity-20" />
+                <p>No se encontraron lotes registrados.</p>
+             </div>
           )}
+        </div>
+        
+        {/* Simple Footer */}
+        <div className="bg-slate-50 px-6 py-3 border-t border-slate-200 text-xs text-slate-500 flex justify-between items-center">
+           <span>Total: {filteredBatches.length} registros</span>
         </div>
       </div>
     </div>

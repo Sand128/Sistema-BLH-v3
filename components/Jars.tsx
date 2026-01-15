@@ -1,184 +1,404 @@
-import React, { useState } from 'react';
-import { Plus, Search, Filter, Milk, ArrowUpRight, AlertCircle, CheckCircle2, ChevronRight } from 'lucide-react';
-import { MilkJar, MilkStatus, MilkType, DonorType } from '../types';
-import JarForm from './JarForm';
-import JarDetail from './JarDetail';
+import React, { useState, useMemo } from 'react';
+import { 
+  Search, Plus, Save, Clock, Droplet, User, 
+  CheckCircle2, AlertTriangle, Thermometer, 
+  MapPin, Calendar, Milk, ArrowRight, Filter
+} from 'lucide-react';
+import { MilkJar, MilkStatus, MilkType, DonorType, DonorStatus, Donor } from '../types';
 
-// Mock Data
-const MOCK_JARS: MilkJar[] = [
+// --- MOCK DATA ---
+const MOCK_DONORS: Partial<Donor>[] = [
+  { id: '1', fullName: 'María González Pérez', curp: 'GOPM900101...', status: DonorStatus.ACTIVE, type: DonorType.HOMOLOGOUS_INTERNAL, donorCategory: 'Interna', consentSigned: true },
+  { id: '2', fullName: 'Ana López Martínez', curp: 'LOMA920512...', status: DonorStatus.ACTIVE, type: DonorType.HETEROLOGOUS, donorCategory: 'Externa', consentSigned: true },
+  { id: '3', fullName: 'Lucía Hernández Ruiz', curp: 'HERL880920...', status: DonorStatus.INACTIVE, type: DonorType.HOMOLOGOUS_EXTERNAL, donorCategory: 'En Casa', consentSigned: true },
+  { id: '4', fullName: 'Sofía Ramirez', curp: 'RAMS950101...', status: DonorStatus.ACTIVE, type: DonorType.HOMOLOGOUS_INTERNAL, donorCategory: 'Lactario Hospitalario', consentSigned: false },
+  { id: '5', fullName: 'Carmen Vega', curp: 'VEGC880101...', status: DonorStatus.ACTIVE, type: DonorType.HETEROLOGOUS, donorCategory: 'Externa', consentSigned: true },
+];
+
+const INITIAL_JARS: MilkJar[] = [
   { 
-    id: '1', folio: 'HO-2024-05-27-001', donorId: '1', donorName: 'María González', donorType: DonorType.HOMOLOGOUS_INTERNAL,
-    volumeMl: 50, milkType: MilkType.COLOSTRUM, extractionDate: '2024-05-27', extractionTime: '14:30', extractionPlace: 'Lactario',
-    receptionTemperature: 4.2, status: MilkStatus.RAW, history: []
+    id: '1', folio: 'HO-2024-05-27-001', donorId: '1', donorName: 'María González Pérez', donorType: DonorType.HOMOLOGOUS_INTERNAL,
+    volumeMl: 50, milkType: MilkType.COLOSTRUM, extractionDate: new Date().toISOString().split('T')[0], extractionTime: '08:30', extractionPlace: 'Lactario',
+    receptionTemperature: 4.2, status: MilkStatus.RAW, history: [], clean: true, sealed: true, labeled: true
   },
   { 
-    id: '2', folio: 'HO-2024-05-27-002', donorId: '1', donorName: 'María González', donorType: DonorType.HOMOLOGOUS_INTERNAL,
-    volumeMl: 60, milkType: MilkType.COLOSTRUM, extractionDate: '2024-05-27', extractionTime: '10:00', extractionPlace: 'Lactario',
-    receptionTemperature: 3.8, status: MilkStatus.VERIFIED, history: []
-  },
-  { 
-    id: '3', folio: 'HO-2024-05-26-015', donorId: '2', donorName: 'Ana López', donorType: DonorType.HETEROLOGOUS,
-    volumeMl: 120, milkType: MilkType.MATURE, extractionDate: '2024-05-26', extractionTime: '08:00', extractionPlace: 'Domicilio',
-    receptionTemperature: 6.5, status: MilkStatus.DISCARDED, rejectionReason: 'Temperatura elevada', history: []
+    id: '2', folio: 'HO-2024-05-27-002', donorId: '2', donorName: 'Ana López Martínez', donorType: DonorType.HETEROLOGOUS,
+    volumeMl: 120, milkType: MilkType.MATURE, extractionDate: new Date().toISOString().split('T')[0], extractionTime: '09:15', extractionPlace: 'Domicilio',
+    receptionTemperature: 5.0, status: MilkStatus.RAW, history: [], clean: true, sealed: true, labeled: true
   }
 ];
 
-type ViewState = 'LIST' | 'CREATE' | 'DETAIL';
-
 const Jars: React.FC = () => {
-  const [view, setView] = useState<ViewState>('LIST');
-  const [jars, setJars] = useState<MilkJar[]>(MOCK_JARS);
-  const [selectedJar, setSelectedJar] = useState<MilkJar | null>(null);
+  // State
+  const [jars, setJars] = useState<MilkJar[]>(INITIAL_JARS);
+  const [selectedDonor, setSelectedDonor] = useState<Partial<Donor> | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [notification, setNotification] = useState<{type: 'success' | 'error', message: string} | null>(null);
 
-  // Handlers
-  const handleCreateSuccess = (newJar: MilkJar) => {
-    setJars([newJar, ...jars]);
-    setView('LIST');
+  // Form State
+  const [formData, setFormData] = useState({
+    volumeMl: '',
+    milkType: MilkType.MATURE,
+    extractionDate: new Date().toISOString().split('T')[0],
+    extractionTime: '',
+    receptionTemperature: '',
+    clean: true,
+    sealed: true,
+    labeled: true
+  });
+
+  // --- LOGIC ---
+
+  // Filter donors for right column
+  const filteredDonors = useMemo(() => {
+    return MOCK_DONORS.filter(d => 
+      d.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      d.curp?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [searchTerm]);
+
+  // Today's summary data
+  const todayStr = new Date().toISOString().split('T')[0];
+  const todaysJars = jars.filter(j => j.extractionDate === todayStr || j.history[0]?.date.startsWith(todayStr)); // Simplified date check
+  const totalVolumeToday = todaysJars.reduce((acc, j) => acc + j.volumeMl, 0);
+
+  const handleSelectDonor = (donor: Partial<Donor>) => {
+    if (donor.status !== DonorStatus.ACTIVE || !donor.consentSigned) return;
+    
+    setSelectedDonor(donor);
+    setNotification(null);
+    
+    // Auto-fill defaults based on donor type
+    const isInternal = donor.donorCategory === 'Interna' || donor.donorCategory === 'Lactario Hospitalario';
+    setFormData({
+      volumeMl: '',
+      milkType: MilkType.MATURE,
+      extractionDate: todayStr,
+      extractionTime: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+      receptionTemperature: isInternal ? '4.0' : '',
+      clean: true,
+      sealed: true,
+      labeled: true
+    });
   };
 
-  const handleUpdateJar = (updatedJar: MilkJar) => {
-    setJars(jars.map(j => j.id === updatedJar.id ? updatedJar : j));
-    setSelectedJar(updatedJar); // Keep showing detail with updated info
-  };
-
-  const filteredJars = jars.filter(j => 
-    j.folio.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    j.donorName.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  // Status Badge Helper
-  const getStatusColor = (status: MilkStatus) => {
-    switch (status) {
-      case MilkStatus.RAW: return 'bg-blue-100 text-blue-700';
-      case MilkStatus.VERIFIED: return 'bg-emerald-100 text-emerald-700';
-      case MilkStatus.DISCARDED: return 'bg-red-100 text-red-700 line-through decoration-red-700/50';
-      default: return 'bg-slate-100 text-slate-700';
+  const handleSave = () => {
+    // 1. Validations
+    if (!formData.volumeMl || parseFloat(formData.volumeMl) <= 0) {
+      setNotification({ type: 'error', message: 'El volumen debe ser mayor a 0.' });
+      return;
     }
+    if (!formData.extractionTime) {
+      setNotification({ type: 'error', message: 'La hora de extracción es obligatoria.' });
+      return;
+    }
+    if (!formData.receptionTemperature) {
+      setNotification({ type: 'error', message: 'La temperatura es obligatoria.' });
+      return;
+    }
+
+    // 2. Create Object
+    const newJar: MilkJar = {
+      id: Math.random().toString(36).substr(2, 9),
+      folio: `N-${Math.floor(Math.random() * 10000)}`, // Simple mock folio
+      donorId: selectedDonor!.id!,
+      donorName: selectedDonor!.fullName!,
+      donorType: selectedDonor!.type!,
+      volumeMl: parseFloat(formData.volumeMl),
+      milkType: formData.milkType,
+      extractionDate: formData.extractionDate,
+      extractionTime: formData.extractionTime,
+      extractionPlace: (selectedDonor?.donorCategory === 'Interna') ? 'Lactario' : 'Domicilio',
+      receptionTemperature: parseFloat(formData.receptionTemperature),
+      status: MilkStatus.RAW,
+      clean: formData.clean,
+      sealed: formData.sealed,
+      labeled: formData.labeled,
+      history: [{ date: new Date().toISOString(), action: 'Registro', user: 'Usuario Actual' }]
+    };
+
+    // 3. Save (Mock)
+    setJars([newJar, ...jars]);
+    
+    // 4. Feedback & Reset
+    setNotification({ type: 'success', message: 'El frasco se guardó correctamente.' });
+    setSelectedDonor(null); // Return to "Select Donor" state to force verification of identity for next jar
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Render Logic
-  if (view === 'CREATE') {
-    return <JarForm onSuccess={handleCreateSuccess} onCancel={() => setView('LIST')} />;
-  }
-
-  if (view === 'DETAIL' && selectedJar) {
-    return <JarDetail jar={selectedJar} onBack={() => setView('LIST')} onUpdate={handleUpdateJar} />;
-  }
+  const isInternalDonor = selectedDonor?.donorCategory === 'Interna' || selectedDonor?.donorCategory === 'Lactario Hospitalario';
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-800">Frascos de Leche</h2>
-          <p className="text-slate-500">Gestión de extracciones y verificación inicial</p>
-        </div>
-        <button 
-          onClick={() => setView('CREATE')}
-          className="bg-pink-600 hover:bg-pink-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow-sm transition-colors"
-        >
-          <Plus size={20} />
-          Registrar Extracción
-        </button>
+    <div className="h-[calc(100vh-140px)] flex flex-col lg:flex-row gap-6">
+      
+      {/* --- LEFT COLUMN: SUMMARY & FORM (66%) --- */}
+      <div className="flex-1 lg:basis-2/3 flex flex-col gap-6 overflow-y-auto pr-2">
+        
+        {/* 1. DAILY SUMMARY CARD */}
+        <section className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex-shrink-0">
+          <div className="bg-slate-50 px-6 py-4 border-b border-slate-200 flex justify-between items-center">
+            <div>
+              <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                <Calendar size={18} className="text-pink-600"/> Resumen del Día
+              </h3>
+              <p className="text-xs text-slate-500 capitalize">{new Date().toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-xs text-slate-500 uppercase font-bold">Total Hoy</p>
+              <p className="text-xl font-bold text-blue-600">{(totalVolumeToday / 1000).toFixed(2)} L</p>
+            </div>
+          </div>
+          
+          <div className="max-h-48 overflow-y-auto">
+            {todaysJars.length === 0 ? (
+              <div className="p-8 text-center text-slate-400 text-sm">
+                No hay frascos registrados hoy.
+              </div>
+            ) : (
+              <table className="w-full text-left text-sm">
+                <thead className="bg-slate-50 text-slate-500 sticky top-0">
+                  <tr>
+                    <th className="px-6 py-2 font-medium">Hora</th>
+                    <th className="px-6 py-2 font-medium">Folio</th>
+                    <th className="px-6 py-2 font-medium">Donadora</th>
+                    <th className="px-6 py-2 font-medium text-right">Volumen</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {todaysJars.map(jar => (
+                    <tr key={jar.id} className="hover:bg-slate-50">
+                      <td className="px-6 py-2 text-slate-500 font-mono text-xs">{jar.extractionTime}</td>
+                      <td className="px-6 py-2 font-medium text-slate-700">{jar.folio}</td>
+                      <td className="px-6 py-2 text-slate-600 truncate max-w-[200px]">{jar.donorName}</td>
+                      <td className="px-6 py-2 text-right font-bold text-blue-600">{jar.volumeMl} ml</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </section>
+
+        {/* 2. REGISTRATION FORM */}
+        <section className="bg-white rounded-xl border border-slate-200 shadow-sm flex-1 flex flex-col">
+          <div className="px-6 py-4 border-b border-slate-200">
+            <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+              <Plus size={18} className="text-pink-600"/> Nuevo Registro de Frasco
+            </h3>
+          </div>
+
+          {!selectedDonor ? (
+            <div className="flex-1 flex flex-col items-center justify-center p-12 text-center text-slate-400 bg-slate-50/50">
+              <Search size={48} className="mb-4 text-slate-300"/>
+              <p className="text-lg font-medium text-slate-600">Seleccione una donadora</p>
+              <p className="text-sm">Utilice el listado de la derecha para comenzar el registro.</p>
+            </div>
+          ) : (
+            <div className="p-6 space-y-6 flex-1 overflow-y-auto">
+              
+              {/* Feedback Message */}
+              {notification && (
+                <div className={`p-4 rounded-lg flex items-center gap-3 ${notification.type === 'success' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-red-50 text-red-800 border border-red-200'}`}>
+                  {notification.type === 'success' ? <CheckCircle2 size={20}/> : <AlertTriangle size={20}/>}
+                  <span className="font-medium">{notification.message}</span>
+                </div>
+              )}
+
+              {/* Selected Donor Card */}
+              <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 flex justify-between items-center animate-in fade-in slide-in-from-top-2">
+                <div>
+                  <p className="text-xs text-slate-500 font-bold uppercase mb-1">Donadora Seleccionada</p>
+                  <h4 className="text-lg font-bold text-slate-800">{selectedDonor.fullName}</h4>
+                  <div className="flex gap-2 mt-1">
+                    <span className={`text-xs px-2 py-0.5 rounded border ${isInternalDonor ? 'bg-purple-100 text-purple-700 border-purple-200' : 'bg-orange-100 text-orange-700 border-orange-200'}`}>
+                      {selectedDonor.donorCategory}
+                    </span>
+                    <span className="text-xs text-slate-500 font-mono pt-0.5">{selectedDonor.curp}</span>
+                  </div>
+                </div>
+                <button onClick={() => setSelectedDonor(null)} className="text-sm text-pink-600 hover:underline">
+                  Cambiar
+                </button>
+              </div>
+
+              {/* Specific Guidelines */}
+              <div className={`text-sm p-3 rounded border flex gap-3 ${isInternalDonor ? 'bg-blue-50 border-blue-100 text-blue-800' : 'bg-amber-50 border-amber-100 text-amber-800'}`}>
+                {isInternalDonor ? (
+                  <>
+                    <CheckCircle2 size={18} className="shrink-0 mt-0.5"/>
+                    <p><strong>Protocolo Interno:</strong> Verifique higiene de manos y mamas antes de recibir. Asegure etiquetado inmediato.</p>
+                  </>
+                ) : (
+                  <>
+                    <Thermometer size={18} className="shrink-0 mt-0.5"/>
+                    <p><strong>Protocolo Externo:</strong> Verifique temperatura de hielera, estado de geles congelantes y tiempo de transporte.</p>
+                  </>
+                )}
+              </div>
+
+              {/* Form Fields */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-1">Volumen (ml) *</label>
+                  <div className="relative">
+                    <Droplet className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18}/>
+                    <input 
+                      type="number" 
+                      autoFocus
+                      className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-pink-500 outline-none text-lg font-bold"
+                      placeholder="0"
+                      value={formData.volumeMl}
+                      onChange={e => setFormData({...formData, volumeMl: e.target.value})}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-1">Tipo de Leche</label>
+                  <select 
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-pink-500 outline-none bg-white"
+                    value={formData.milkType}
+                    onChange={e => setFormData({...formData, milkType: e.target.value as any})}
+                  >
+                    {Object.values(MilkType).map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-1">Hora Extracción *</label>
+                  <div className="relative">
+                    <Clock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18}/>
+                    <input 
+                      type="time" 
+                      className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-pink-500 outline-none"
+                      value={formData.extractionTime}
+                      onChange={e => setFormData({...formData, extractionTime: e.target.value})}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-1">Temperatura Recepción (°C) *</label>
+                  <div className="relative">
+                    <Thermometer className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18}/>
+                    <input 
+                      type="number" 
+                      step="0.1"
+                      className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-pink-500 outline-none"
+                      placeholder="Ej: 4.0"
+                      value={formData.receptionTemperature}
+                      onChange={e => setFormData({...formData, receptionTemperature: e.target.value})}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Integrity Checks */}
+              <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-3">Verificación Física</label>
+                <div className="flex flex-wrap gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer bg-white px-3 py-2 rounded border border-slate-200 hover:border-pink-300 transition-colors">
+                    <input type="checkbox" checked={formData.clean} onChange={e => setFormData({...formData, clean: e.target.checked})} className="w-4 h-4 text-pink-600 rounded"/>
+                    <span className="text-sm">Frasco Limpio</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer bg-white px-3 py-2 rounded border border-slate-200 hover:border-pink-300 transition-colors">
+                    <input type="checkbox" checked={formData.sealed} onChange={e => setFormData({...formData, sealed: e.target.checked})} className="w-4 h-4 text-pink-600 rounded"/>
+                    <span className="text-sm">Bien Sellado</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer bg-white px-3 py-2 rounded border border-slate-200 hover:border-pink-300 transition-colors">
+                    <input type="checkbox" checked={formData.labeled} onChange={e => setFormData({...formData, labeled: e.target.checked})} className="w-4 h-4 text-pink-600 rounded"/>
+                    <span className="text-sm">Etiquetado</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Action Button */}
+              <div className="pt-4 border-t border-slate-100 flex justify-end">
+                <button 
+                  onClick={handleSave}
+                  className="bg-pink-600 hover:bg-pink-700 text-white font-bold py-3 px-8 rounded-lg shadow-lg hover:shadow-xl transition-all flex items-center gap-2"
+                >
+                  <Save size={20} />
+                  Guardar Frasco
+                </button>
+              </div>
+
+            </div>
+          )}
+        </section>
       </div>
 
-      {/* Stats Cards (Mini Dashboard for Module) */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-          <span className="text-xs text-slate-500 font-bold uppercase">Pendientes Verificación</span>
-          <div className="flex items-center justify-between mt-2">
-            <span className="text-2xl font-bold text-blue-600">{jars.filter(j => j.status === MilkStatus.RAW).length}</span>
-            <AlertCircle className="text-blue-200" size={24} />
-          </div>
-        </div>
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-           <span className="text-xs text-slate-500 font-bold uppercase">Verificados Hoy</span>
-           <div className="flex items-center justify-between mt-2">
-            <span className="text-2xl font-bold text-emerald-600">{jars.filter(j => j.status === MilkStatus.VERIFIED).length}</span>
-            <CheckCircle2 className="text-emerald-200" size={24} />
-          </div>
-        </div>
-      </div>
-
-      {/* Main List */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        {/* Toolbar */}
-        <div className="p-4 border-b border-slate-200 flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+      {/* --- RIGHT COLUMN: DONOR LIST (33%) --- */}
+      <div className="flex-1 lg:basis-1/3 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-full">
+        <div className="p-4 border-b border-slate-200 bg-slate-50">
+          <h3 className="font-bold text-slate-800 mb-3">Listado de Donadoras</h3>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
             <input 
               type="text" 
-              placeholder="Buscar por folio o donadora..." 
-              className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+              placeholder="Buscar por nombre o CURP..." 
+              className="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <button className="px-4 py-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 flex items-center gap-2">
-            <Filter size={18} />
-            Filtros
-          </button>
+          <div className="flex gap-2 mt-2">
+             <button className="text-xs flex items-center gap-1 bg-white border border-slate-200 px-2 py-1 rounded text-slate-600 hover:bg-slate-100">
+               <Filter size={12}/> Activas
+             </button>
+             <button className="text-xs flex items-center gap-1 bg-white border border-slate-200 px-2 py-1 rounded text-slate-600 hover:bg-slate-100">
+               <MapPin size={12}/> Internas
+             </button>
+          </div>
         </div>
 
-        {/* List */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead className="bg-slate-50 text-slate-600 font-medium text-sm">
-              <tr>
-                <th className="px-6 py-4">Folio</th>
-                <th className="px-6 py-4">Donadora</th>
-                <th className="px-6 py-4">Detalles</th>
-                <th className="px-6 py-4">Fecha/Hora</th>
-                <th className="px-6 py-4">Estado</th>
-                <th className="px-6 py-4"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filteredJars.map((jar) => (
-                <tr 
-                  key={jar.id} 
-                  onClick={() => { setSelectedJar(jar); setView('DETAIL'); }}
-                  className="hover:bg-slate-50 transition-colors cursor-pointer group"
+        <div className="flex-1 overflow-y-auto p-2 space-y-2">
+          {filteredDonors.length === 0 ? (
+            <div className="p-4 text-center text-slate-400 text-sm">
+              No se encontraron donadoras.
+            </div>
+          ) : (
+            filteredDonors.map(donor => {
+              const isDisabled = donor.status !== DonorStatus.ACTIVE || !donor.consentSigned;
+              return (
+                <div 
+                  key={donor.id}
+                  onClick={() => !isDisabled && handleSelectDonor(donor)}
+                  className={`p-3 rounded-lg border transition-all cursor-pointer group
+                    ${selectedDonor?.id === donor.id 
+                      ? 'bg-pink-50 border-pink-300 ring-1 ring-pink-300' 
+                      : isDisabled
+                        ? 'bg-slate-50 border-slate-100 opacity-60 cursor-not-allowed'
+                        : 'bg-white border-slate-200 hover:border-pink-300 hover:shadow-sm'}
+                  `}
                 >
-                  <td className="px-6 py-4">
-                    <span className="font-mono font-medium text-slate-700 bg-slate-100 px-2 py-1 rounded text-sm group-hover:bg-pink-50 group-hover:text-pink-700 transition-colors">
-                      {jar.folio}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="font-medium text-slate-800">{jar.donorName}</div>
-                    <div className="text-xs text-slate-500">{jar.donorType}</div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2 text-sm text-slate-600">
-                      <Milk size={14} className="text-slate-400"/> {jar.volumeMl}mL
-                      <span className="text-slate-300">|</span>
-                      {jar.milkType}
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className={`text-sm font-bold ${selectedDonor?.id === donor.id ? 'text-pink-800' : 'text-slate-800'}`}>
+                        {donor.fullName}
+                      </p>
+                      <p className="text-xs text-slate-500 font-mono mt-0.5">{donor.curp}</p>
                     </div>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-slate-500">
-                    {jar.extractionDate} <span className="text-xs opacity-75">{jar.extractionTime}</span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-bold ${getStatusColor(jar.status)}`}>
-                      {jar.status}
+                    {isDisabled && <AlertTriangle size={14} className="text-amber-500" title="Inactiva o sin consentimiento"/>}
+                  </div>
+                  
+                  <div className="flex justify-between items-center mt-2">
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full border ${
+                      donor.donorCategory === 'Interna' ? 'bg-purple-50 text-purple-700 border-purple-100' : 'bg-orange-50 text-orange-700 border-orange-100'
+                    }`}>
+                      {donor.donorCategory}
                     </span>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <ChevronRight size={18} className="text-slate-300 group-hover:text-pink-500" />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {filteredJars.length === 0 && (
-             <div className="p-12 text-center text-slate-400">
-               No se encontraron frascos.
-             </div>
+                    {!isDisabled && (
+                      <ArrowRight size={14} className={`transform transition-transform ${selectedDonor?.id === donor.id ? 'text-pink-600 translate-x-1' : 'text-slate-300 group-hover:text-pink-400'}`} />
+                    )}
+                  </div>
+                </div>
+              );
+            })
           )}
         </div>
       </div>
+
     </div>
   );
 };

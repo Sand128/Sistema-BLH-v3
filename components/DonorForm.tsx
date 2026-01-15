@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Save, X, AlertTriangle, FileCheck, Calculator, Calendar, Activity, ClipboardList, Plus, Trash2, Pill } from 'lucide-react';
+import { Save, X, AlertTriangle, FileCheck, Calculator, Calendar, Activity, ClipboardList, Plus, Trash2, Pill, TestTube } from 'lucide-react';
 import { Donor, DonorType, DonorStatus, LabResult, Medication } from '../types';
 import { HOSPITAL_CATALOG } from '../constants/catalogs';
 
@@ -17,6 +17,19 @@ const RISK_ITEMS = [
   { key: 'acupuncture', label: 'Acupuntura' },
   { key: 'needleStick', label: 'Accidentes con agujas' },
   { key: 'others', label: 'Otros' },
+];
+
+const INITIAL_LABS: LabResult[] = [
+  { id: 'hem', testName: 'Hemoglobina', category: 'BIOCHEMISTRY', timing: {before:false, during:false, after:false}, resultDate: '', result: '' },
+  { id: 'hto', testName: 'Hematocrito', category: 'BIOCHEMISTRY', timing: {before:false, during:false, after:false}, resultDate: '', result: '' },
+  { id: 'gluc', testName: 'Glucosa', category: 'BIOCHEMISTRY', timing: {before:false, during:false, after:false}, resultDate: '', result: '' },
+  { id: 'col', testName: 'Colesterol', category: 'BIOCHEMISTRY', timing: {before:false, during:false, after:false}, resultDate: '', result: '' },
+  { id: 'trig', testName: 'Triglicéridos', category: 'BIOCHEMISTRY', timing: {before:false, during:false, after:false}, resultDate: '', result: '' },
+  
+  { id: 'hiv', testName: 'VIH', category: 'SEROLOGY', timing: {before:false, during:false, after:false}, resultDate: '', result: 'No Reactivo', isReactive: false },
+  { id: 'vdrl', testName: 'VDRL (Sífilis)', category: 'SEROLOGY', timing: {before:false, during:false, after:false}, resultDate: '', result: 'No Reactivo', isReactive: false },
+  { id: 'hepb', testName: 'Hepatitis B (HBsAg)', category: 'SEROLOGY', timing: {before:false, during:false, after:false}, resultDate: '', result: 'No Reactivo', isReactive: false },
+  { id: 'hepc', testName: 'Hepatitis C (Anti-HCV)', category: 'SEROLOGY', timing: {before:false, during:false, after:false}, resultDate: '', result: 'No Reactivo', isReactive: false },
 ];
 
 const DonorForm: React.FC<DonorFormProps> = ({ initialData, onSubmit, onCancel, isEditMode = false }) => {
@@ -45,12 +58,7 @@ const DonorForm: React.FC<DonorFormProps> = ({ initialData, onSubmit, onCancel, 
       interviewerName: '',
       elaboratedByName: ''
     },
-    labResults: [
-      { id: '1', testName: 'VIH', result: 'No Reactivo', date: new Date().toISOString().split('T')[0] },
-      { id: '2', testName: 'VDRL', result: 'No Reactivo', date: new Date().toISOString().split('T')[0] },
-      { id: '3', testName: 'Hepatitis B', result: 'No Reactivo', date: new Date().toISOString().split('T')[0] },
-      { id: '4', testName: 'Hepatitis C', result: 'No Reactivo', date: new Date().toISOString().split('T')[0] },
-    ],
+    labResults: INITIAL_LABS,
     bloodGroup: '',
     obstetricEventType: '',
     ...initialData
@@ -58,6 +66,18 @@ const DonorForm: React.FC<DonorFormProps> = ({ initialData, onSubmit, onCancel, 
 
   const [activeSection, setActiveSection] = useState(1);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Ensure labResults has complete structure if loading from saved data
+  useEffect(() => {
+    if (initialData?.labResults) {
+      // Merge initial data with full structure to ensure all fields exist
+      const mergedLabs = INITIAL_LABS.map(defaultLab => {
+        const existing = initialData.labResults?.find(l => l.testName === defaultLab.testName);
+        return existing ? { ...defaultLab, ...existing } : defaultLab;
+      });
+      setFormData(prev => ({ ...prev, labResults: mergedLabs }));
+    }
+  }, [initialData]);
 
   // Auto-calculate BMI
   useEffect(() => {
@@ -145,25 +165,55 @@ const DonorForm: React.FC<DonorFormProps> = ({ initialData, onSubmit, onCancel, 
     }));
   };
 
-  const handleLabChange = (index: number, field: keyof LabResult, value: any) => {
+  // --- LAB RESULT HANDLERS ---
+  const handleLabTimingChange = (index: number, timingField: 'before' | 'during' | 'after', checked: boolean) => {
     const newLabs = [...(formData.labResults || [])];
-    newLabs[index] = { ...newLabs[index], [field]: value };
+    if (!newLabs[index].timing) newLabs[index].timing = { before: false, during: false, after: false };
+    newLabs[index].timing![timingField] = checked;
+    setFormData(prev => ({ ...prev, labResults: newLabs }));
+  };
+
+  const handleLabResultChange = (index: number, field: 'result' | 'resultDate', value: string) => {
+    const newLabs = [...(formData.labResults || [])];
+    newLabs[index][field] = value;
+    
+    // Auto-flag reactive
+    if (field === 'result' && newLabs[index].category === 'SEROLOGY') {
+      newLabs[index].isReactive = value === 'Reactivo';
+    }
+    
     setFormData(prev => ({ ...prev, labResults: newLabs }));
   };
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
     if (!formData.fullName) newErrors.fullName = 'El nombre es obligatorio';
-    if (!formData.curp) newErrors.curp = 'El CURP es obligatorio';
     if (!formData.expediente) newErrors.expediente = 'El expediente es obligatorio';
-    if (!formData.contactPhone) newErrors.contactPhone = 'El teléfono es obligatorio';
     if (!formData.birthDate) newErrors.birthDate = 'Fecha de nacimiento requerida';
     if (!formData.bloodGroup) newErrors.bloodGroup = 'Grupo Sanguíneo es obligatorio';
     if (!formData.obstetricEventType) newErrors.obstetricEventType = 'Tipo de evento obstétrico obligatorio';
     
+    // CURP Validation (18 caracteres alfanuméricos formato estándar)
+    const curpRegex = /^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z\d]\d$/;
+    if (!formData.curp) {
+        newErrors.curp = 'El CURP es obligatorio';
+    } else if (formData.curp.length !== 18) {
+        newErrors.curp = 'El CURP debe tener exactamente 18 caracteres';
+    } else if (!curpRegex.test(formData.curp)) {
+        newErrors.curp = 'Formato de CURP inválido (Verifique formato oficial)';
+    }
+
+    // Phone Validation (10 dígitos)
+    const phoneDigits = formData.contactPhone?.replace(/\D/g, '') || '';
+    if (!formData.contactPhone) {
+        newErrors.contactPhone = 'El teléfono es obligatorio';
+    } else if (phoneDigits.length !== 10) {
+        newErrors.contactPhone = 'El teléfono debe tener 10 dígitos numéricos';
+    }
+
     if (formData.status === DonorStatus.ACTIVE) {
       if (!formData.consentSigned) newErrors.consentSigned = 'Firma de consentimiento requerida para activar';
-      const hasReactive = formData.labResults?.some(l => l.result === 'Reactivo');
+      const hasReactive = formData.labResults?.some(l => l.category === 'SEROLOGY' && l.result === 'Reactivo');
       if (hasReactive) newErrors.status = 'No se puede activar con laboratorios Reactivos';
     }
 
@@ -184,6 +234,8 @@ const DonorForm: React.FC<DonorFormProps> = ({ initialData, onSubmit, onCancel, 
   const isCustomObstetricEvent = 
     formData.obstetricEventType && 
     !['Parto Eutócico', 'Cesárea', 'Parto Instrumentado'].includes(formData.obstetricEventType);
+
+  const hasAnyReactive = formData.labResults?.some(l => l.isReactive);
 
   return (
     <div className="bg-white rounded-xl shadow-lg border border-slate-200 flex flex-col h-[calc(100vh-140px)]">
@@ -265,10 +317,13 @@ const DonorForm: React.FC<DonorFormProps> = ({ initialData, onSubmit, onCancel, 
                   <label className="block text-sm font-medium text-slate-700 mb-1">CURP *</label>
                   <input 
                     type="text" 
+                    maxLength={18}
                     value={formData.curp || ''}
                     onChange={(e) => handleChange('curp', e.target.value.toUpperCase())}
-                    className={`w-full p-2 border rounded-lg uppercase ${errors.curp ? 'border-red-500' : 'border-slate-300'}`}
+                    className={`w-full p-2 border rounded-lg uppercase ${errors.curp ? 'border-red-500 bg-red-50' : 'border-slate-300'}`}
+                    placeholder="18 caracteres alfanuméricos"
                   />
+                  {errors.curp && <span className="text-xs text-red-600 font-medium mt-1">{errors.curp}</span>}
                 </div>
 
                 <div className="flex gap-4">
@@ -293,8 +348,10 @@ const DonorForm: React.FC<DonorFormProps> = ({ initialData, onSubmit, onCancel, 
                     type="tel" 
                     value={formData.contactPhone || ''}
                     onChange={(e) => handleChange('contactPhone', e.target.value)}
-                    className={`w-full p-2 border rounded-lg ${errors.contactPhone ? 'border-red-500' : 'border-slate-300'}`}
+                    className={`w-full p-2 border rounded-lg ${errors.contactPhone ? 'border-red-500 bg-red-50' : 'border-slate-300'}`}
+                    placeholder="10 dígitos"
                   />
+                  {errors.contactPhone && <span className="text-xs text-red-600 font-medium mt-1">{errors.contactPhone}</span>}
                 </div>
 
                 {/* NUEVO CAMPO: GRUPO SANGUÍNEO */}
@@ -749,55 +806,101 @@ const DonorForm: React.FC<DonorFormProps> = ({ initialData, onSubmit, onCancel, 
           {/* --- SECTION 4: LABS --- */}
           <div className={activeSection === 4 ? 'block space-y-6' : 'hidden'}>
              <div className="bg-white p-6 rounded-lg border border-slate-200 shadow-sm animate-in fade-in">
-                <h3 className="text-lg font-semibold text-slate-800 mb-4 border-b pb-2 flex justify-between">
-                  <span>4. Exámenes de Laboratorio</span>
-                  <span className="text-xs font-normal text-slate-500 bg-slate-100 px-2 py-1 rounded">Vigencia: 6 meses</span>
-                </h3>
+                <div className="flex justify-between items-center mb-6 border-b pb-4">
+                  <h3 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
+                    <TestTube size={20} className="text-purple-600"/> 4. Exámenes de Laboratorio
+                  </h3>
+                  <span className="text-xs font-normal text-slate-500 bg-slate-100 px-3 py-1 rounded-full border border-slate-200">Vigencia: 6 meses</span>
+                </div>
                 
+                {hasAnyReactive && (
+                  <div className="mb-6 bg-red-50 border border-red-200 p-4 rounded-lg flex items-start gap-3">
+                    <AlertTriangle className="text-red-600 mt-0.5" size={20} />
+                    <div>
+                      <h4 className="font-bold text-red-800 text-sm">Alerta de Seguridad Sanitaria</h4>
+                      <p className="text-xs text-red-700 mt-1">Se han detectado resultados REACTIVOS. La donadora debe ser clasificada como <strong>No Apta</strong> y referida a atención médica especializada.</p>
+                    </div>
+                  </div>
+                )}
+
                 <div className="overflow-hidden rounded-lg border border-slate-200">
                   <table className="w-full text-sm text-left">
-                    <thead className="bg-slate-50 text-slate-700">
+                    <thead className="bg-slate-50 text-slate-700 text-xs uppercase font-bold tracking-wider">
                       <tr>
-                        <th className="px-4 py-3">Estudio</th>
-                        <th className="px-4 py-3">Resultado</th>
-                        <th className="px-4 py-3">Fecha Toma</th>
+                        <th className="px-4 py-3 w-1/4">Prueba</th>
+                        <th className="px-2 py-3 text-center w-24 border-l border-slate-200">Antes<br/><span className="text-[9px] text-slate-400 font-normal normal-case">Embarazo</span></th>
+                        <th className="px-2 py-3 text-center w-24 border-l border-slate-200">Durante<br/><span className="text-[9px] text-slate-400 font-normal normal-case">Embarazo</span></th>
+                        <th className="px-2 py-3 text-center w-24 border-l border-slate-200 border-r">Después<br/><span className="text-[9px] text-slate-400 font-normal normal-case">Parto</span></th>
+                        <th className="px-4 py-3 w-1/3">Resultado Final <span className="font-normal normal-case text-slate-400 ml-1">(Fecha + Valor)</span></th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {formData.labResults?.map((lab, idx) => (
-                        <tr key={idx} className="bg-white">
-                          <td className="px-4 py-3 font-medium">{lab.testName}</td>
-                          <td className="px-4 py-3">
-                             <select 
-                               value={lab.result}
-                               onChange={(e) => handleLabChange(idx, 'result', e.target.value)}
-                               className={`p-1 rounded border text-sm font-semibold
-                                ${lab.result === 'Reactivo' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}
-                               `}
-                             >
-                               <option value="No Reactivo">No Reactivo</option>
-                               <option value="Reactivo">Reactivo ⚠️</option>
-                             </select>
-                          </td>
-                          <td className="px-4 py-3">
-                            <input 
-                              type="date"
-                              value={lab.date}
-                              onChange={(e) => handleLabChange(idx, 'date', e.target.value)}
-                              className="border border-slate-300 rounded p-1 text-sm"
-                            />
-                          </td>
-                        </tr>
-                      ))}
+                      {/* Group 1: Hematology & Bioquímica */}
+                      <tr className="bg-blue-50/50"><td colSpan={5} className="px-4 py-2 text-xs font-bold text-blue-800 uppercase tracking-wide">Perfil Hematológico y Bioquímico</td></tr>
+                      {formData.labResults?.filter(l => l.category === 'BIOCHEMISTRY').map((lab, idx) => {
+                        // Find the original index in the main array to update correctly
+                        const realIndex = formData.labResults!.findIndex(x => x.testName === lab.testName);
+                        return (
+                          <tr key={lab.testName} className="bg-white hover:bg-slate-50">
+                            <td className="px-4 py-3 font-medium text-slate-700">{lab.testName}</td>
+                            <td className="px-2 py-3 text-center border-l border-slate-100">
+                              <input type="checkbox" checked={lab.timing?.before || false} onChange={(e) => handleLabTimingChange(realIndex, 'before', e.target.checked)} className="w-4 h-4 text-blue-600 rounded" />
+                            </td>
+                            <td className="px-2 py-3 text-center border-l border-slate-100">
+                              <input type="checkbox" checked={lab.timing?.during || false} onChange={(e) => handleLabTimingChange(realIndex, 'during', e.target.checked)} className="w-4 h-4 text-blue-600 rounded" />
+                            </td>
+                            <td className="px-2 py-3 text-center border-l border-r border-slate-100">
+                              <input type="checkbox" checked={lab.timing?.after || false} onChange={(e) => handleLabTimingChange(realIndex, 'after', e.target.checked)} className="w-4 h-4 text-blue-600 rounded" />
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex gap-2">
+                                <input type="date" value={lab.resultDate || ''} onChange={(e) => handleLabResultChange(realIndex, 'resultDate', e.target.value)} className="w-32 text-xs p-1 border rounded" />
+                                <input type="text" placeholder="Valor" value={lab.result || ''} onChange={(e) => handleLabResultChange(realIndex, 'result', e.target.value)} className="flex-1 text-xs p-1 border rounded" />
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+
+                      {/* Group 2: Serology */}
+                      <tr className="bg-purple-50/50"><td colSpan={5} className="px-4 py-2 text-xs font-bold text-purple-800 uppercase tracking-wide border-t border-slate-200">Perfil Serológico (Infeccioso)</td></tr>
+                      {formData.labResults?.filter(l => l.category === 'SEROLOGY').map((lab, idx) => {
+                        const realIndex = formData.labResults!.findIndex(x => x.testName === lab.testName);
+                        const isReactive = lab.isReactive;
+                        
+                        return (
+                          <tr key={lab.testName} className={`${isReactive ? 'bg-red-50 hover:bg-red-100 transition-colors' : 'bg-white hover:bg-slate-50'}`}>
+                            <td className="px-4 py-3 font-medium text-slate-700 flex items-center gap-2">
+                              {lab.testName}
+                              {isReactive && <AlertTriangle size={14} className="text-red-600" />}
+                            </td>
+                            <td className="px-2 py-3 text-center border-l border-slate-100">
+                              <input type="checkbox" checked={lab.timing?.before || false} onChange={(e) => handleLabTimingChange(realIndex, 'before', e.target.checked)} className="w-4 h-4 text-purple-600 rounded" />
+                            </td>
+                            <td className="px-2 py-3 text-center border-l border-slate-100">
+                              <input type="checkbox" checked={lab.timing?.during || false} onChange={(e) => handleLabTimingChange(realIndex, 'during', e.target.checked)} className="w-4 h-4 text-purple-600 rounded" />
+                            </td>
+                            <td className="px-2 py-3 text-center border-l border-r border-slate-100">
+                              <input type="checkbox" checked={lab.timing?.after || false} onChange={(e) => handleLabTimingChange(realIndex, 'after', e.target.checked)} className="w-4 h-4 text-purple-600 rounded" />
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex gap-2">
+                                <input type="date" value={lab.resultDate || ''} onChange={(e) => handleLabResultChange(realIndex, 'resultDate', e.target.value)} className="w-32 text-xs p-1 border rounded bg-white" />
+                                <select 
+                                  value={lab.result || 'No Reactivo'} 
+                                  onChange={(e) => handleLabResultChange(realIndex, 'result', e.target.value)}
+                                  className={`flex-1 text-xs p-1 border rounded font-bold ${isReactive ? 'bg-red-100 text-red-700 border-red-300' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}
+                                >
+                                  <option value="No Reactivo">No Reactivo</option>
+                                  <option value="Reactivo">⚠️ REACTIVO</option>
+                                </select>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
-                </div>
-                <div className="mt-6 p-4 bg-blue-50 border border-blue-100 rounded-lg flex gap-3">
-                  <FileCheck className="text-blue-500 mt-1" size={20} />
-                  <div>
-                    <p className="text-sm font-semibold text-blue-800">Criterio Clínico</p>
-                    <p className="text-xs text-blue-600 mt-1">Si algún resultado es "Reactivo", la donadora será marcada automáticamente como <strong>No Apta</strong>.</p>
-                  </div>
                 </div>
              </div>
           </div>

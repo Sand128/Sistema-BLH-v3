@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { 
   AlertTriangle, 
   ArrowRight, 
-  Beaker, 
   Bell, 
   Calendar, 
   CheckCircle2, 
@@ -17,6 +16,7 @@ import {
   Thermometer, 
   UserPlus 
 } from 'lucide-react';
+import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { SystemAlert, ActivityLog } from '../types';
 
 // --- MOCK DATA ---
@@ -26,11 +26,9 @@ const ALERTS: SystemAlert[] = [
   { id: '3', type: 'critical', message: 'Temp. Congelador A: -15°C (Fuera de rango)', timestamp: 'Hace 10 min', actionLabel: 'Revisar IoT' },
 ];
 
-const ACTIVITY: ActivityLog[] = [
-  { id: '1', user: 'Ana López', action: 'registró frasco', target: 'HO-2024-05-001', timestamp: '14:30', iconType: 'bottle' },
-  { id: '2', user: 'Dr. Méndez', action: 'liberó lote', target: 'LP-2024-05-002', timestamp: '13:15', iconType: 'lab' },
-  { id: '3', user: 'Enf. Ruiz', action: 'nueva donadora', target: 'María García (HO)', timestamp: '11:45', iconType: 'donor' },
-  { id: '4', user: 'Ana López', action: 'administración', target: 'RN-024 (Cuna 4)', timestamp: '10:20', iconType: 'user' },
+const DATA_MILK_ENTRIES = [
+  { name: 'Registrada Correctamente', value: 85, color: '#10b981' }, // emerald-500
+  { name: 'Pendiente Validación', value: 15, color: '#f59e0b' }, // amber-500
 ];
 
 // --- SUB-COMPONENTS ---
@@ -56,7 +54,7 @@ const MetricCard = ({ title, value, unit, icon: Icon, color, subtext }: any) => 
   </div>
 );
 
-const AlertItem = ({ alert }: { alert: SystemAlert }) => (
+const AlertItem: React.FC<{ alert: SystemAlert }> = ({ alert }) => (
   <div className={`flex items-start gap-3 p-3 rounded-lg border ${
     alert.type === 'critical' ? 'bg-red-50 border-red-100' : 'bg-orange-50 border-orange-100'
   }`}>
@@ -82,35 +80,6 @@ const AlertItem = ({ alert }: { alert: SystemAlert }) => (
     </div>
   </div>
 );
-
-const ActivityItem = ({ log }: { log: ActivityLog }) => {
-  const getIcon = () => {
-    switch (log.iconType) {
-      case 'bottle': return Milk;
-      case 'lab': return Microscope;
-      case 'donor': return UserPlus;
-      default: return CheckCircle2;
-    }
-  };
-  const Icon = getIcon();
-
-  return (
-    <div className="flex gap-3 pb-6 last:pb-0 relative">
-      <div className="absolute left-[15px] top-8 bottom-0 w-px bg-slate-200 last:hidden"></div>
-      <div className="h-8 w-8 rounded-full bg-slate-50 border border-slate-200 flex items-center justify-center flex-shrink-0 z-10">
-        <Icon size={14} className="text-slate-500" />
-      </div>
-      <div className="flex-1 pt-1">
-        <p className="text-sm text-slate-800">
-          <span className="font-semibold">{log.user}</span> {log.action} <span className="font-medium text-pink-600">{log.target}</span>
-        </p>
-        <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1">
-          <Clock size={10} /> {log.timestamp}
-        </p>
-      </div>
-    </div>
-  );
-};
 
 const QuickActionButton = ({ icon: Icon, label, badge, onClick, colorClass }: any) => (
   <button 
@@ -256,21 +225,34 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
              </div>
           </section>
 
-          {/* Activity Log */}
+          {/* Activity Log - Replaced with Chart */}
           <section className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
             <div className="flex items-center justify-between mb-6">
               <h3 className="font-bold text-slate-800 flex items-center gap-2">
                 <Clock size={20} className="text-slate-400" />
                 Actividad Reciente del Sistema
               </h3>
-              <button className="text-xs font-semibold text-pink-600 hover:text-pink-700 flex items-center gap-1">
-                Ver bitácora completa <ChevronRight size={14} />
-              </button>
             </div>
-            <div className="space-y-2">
-              {ACTIVITY.map(log => (
-                <ActivityItem key={log.id} log={log} />
-              ))}
+            <div className="h-[300px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={DATA_MILK_ENTRIES}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {DATA_MILK_ENTRIES.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend verticalAlign="bottom" height={36}/>
+                </PieChart>
+              </ResponsiveContainer>
             </div>
           </section>
 
@@ -299,27 +281,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                <button className="text-xs text-slate-500 hover:text-slate-800 font-medium">
                  Ver todas las notificaciones
                </button>
-            </div>
-          </section>
-
-          {/* Status Summary (Mini Text) */}
-          <section className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 text-white shadow-md">
-            <h4 className="font-semibold mb-2 flex items-center gap-2">
-              <Thermometer size={16} className="text-emerald-400"/> Estado de Cadena de Frío
-            </h4>
-            <div className="space-y-3 text-sm text-slate-300">
-              <div className="flex justify-between">
-                <span>Congelador A (Cruda)</span>
-                <span className="text-white font-mono">-18°C</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Congelador B (Pasteurizada)</span>
-                <span className="text-red-300 font-mono font-bold">-15°C ⚠️</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Refrigerador (Recepción)</span>
-                <span className="text-white font-mono">4°C</span>
-              </div>
             </div>
           </section>
 

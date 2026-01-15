@@ -1,75 +1,61 @@
 import React, { useState } from 'react';
-import { Plus, Search, Filter, TestTube2, AlertCircle, History, Check, X } from 'lucide-react';
-import { MilkJar, MilkStatus, DonorType, MilkType } from '../types';
+import { History, TestTube2, AlertCircle, FlaskConical, Play } from 'lucide-react';
+import { MilkBatch, MilkStatus, MilkType } from '../types';
 import AnalysisWizard from './AnalysisWizard';
 
-// Mock Data - Simulating Jars ready for analysis (Status: VERIFIED)
-const MOCK_VERIFIED_JARS: MilkJar[] = [
+// Mock Batches ready for Analysis (Statuses: RAW or RAW_POOL)
+const MOCK_READY_BATCHES: MilkBatch[] = [
   { 
-    id: '1', folio: 'HO-2024-05-27-001', donorId: '1', donorName: 'María González', donorType: DonorType.HOMOLOGOUS_INTERNAL,
-    volumeMl: 50, milkType: MilkType.COLOSTRUM, extractionDate: '2024-05-27', extractionTime: '14:30', extractionPlace: 'Lactario',
-    receptionTemperature: 4.2, status: MilkStatus.VERIFIED, history: []
+    id: 'B1', folio: 'LP-2024-05-27-001', type: 'Heteróloga', milkType: MilkType.COLOSTRUM, volumeTotalMl: 450,
+    status: MilkStatus.RAW, creationDate: '2024-05-27', donors: [{id:'1', name:'María G.'}], jarIds: ['1','2']
   },
   { 
-    id: '2', folio: 'HO-2024-05-27-002', donorId: '1', donorName: 'María González', donorType: DonorType.HOMOLOGOUS_INTERNAL,
-    volumeMl: 60, milkType: MilkType.COLOSTRUM, extractionDate: '2024-05-27', extractionTime: '10:00', extractionPlace: 'Lactario',
-    receptionTemperature: 3.8, status: MilkStatus.VERIFIED, history: []
+    id: 'B2', folio: 'LP-2024-05-27-002', type: 'Homóloga', milkType: MilkType.MATURE, volumeTotalMl: 1200,
+    status: MilkStatus.RAW, creationDate: '2024-05-27', donors: [{id:'2', name:'Ana L.'}], jarIds: ['3']
   },
   { 
-    id: '4', folio: 'HE-2024-05-27-004', donorId: '3', donorName: 'Lucía Ruiz', donorType: DonorType.HETEROLOGOUS,
-    volumeMl: 120, milkType: MilkType.MATURE, extractionDate: '2024-05-26', extractionTime: '18:30', extractionPlace: 'Domicilio',
-    receptionTemperature: 4.5, status: MilkStatus.VERIFIED, history: []
-  },
-  { 
-    id: '5', folio: 'HO-2024-05-27-005', donorId: '1', donorName: 'María González', donorType: DonorType.HOMOLOGOUS_INTERNAL,
-    volumeMl: 40, milkType: MilkType.COLOSTRUM, extractionDate: '2024-05-27', extractionTime: '15:30', extractionPlace: 'Lactario',
-    receptionTemperature: 4.0, status: MilkStatus.VERIFIED, history: []
+    id: 'B3', folio: 'LP-2024-05-26-003', type: 'Heteróloga', milkType: MilkType.TRANSITION, volumeTotalMl: 850,
+    status: MilkStatus.RAW, creationDate: '2024-05-26', donors: [{id:'3', name:'Rosa M.'}], jarIds: ['4','5']
   }
 ];
 
 const Analysis: React.FC = () => {
   const [view, setView] = useState<'LIST' | 'WIZARD'>('LIST');
-  const [jars, setJars] = useState<MilkJar[]>(MOCK_VERIFIED_JARS);
-  const [selectedJarIds, setSelectedJarIds] = useState<string[]>([]);
-  const [analysisHistory, setAnalysisHistory] = useState<any[]>([]); // simplified for history
+  const [batches, setBatches] = useState<MilkBatch[]>(MOCK_READY_BATCHES);
+  const [selectedBatch, setSelectedBatch] = useState<MilkBatch | null>(null);
+  
+  // Stats
+  const analyzedCount = 5; // Mock for daily stats
 
-  const handleSelectionChange = (id: string) => {
-    setSelectedJarIds(prev => 
-      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
-    );
-  };
-
-  const startAnalysis = () => {
-    if (selectedJarIds.length === 0) return;
+  const startAnalysis = (batch: MilkBatch) => {
+    setSelectedBatch(batch);
     setView('WIZARD');
   };
 
-  const handleAnalysisComplete = (analyzedResults: MilkJar[]) => {
-    // In a real app, this would push updates to backend
-    // For now, we "remove" them from the pending list and add to history log
-    
-    // 1. Remove analyzed jars from the main pending list
-    setJars(prev => prev.filter(j => !selectedJarIds.includes(j.id)));
-
-    // 2. Add to history mock
-    setAnalysisHistory(prev => [{
-      id: Math.random().toString(),
-      date: new Date().toISOString(),
-      jarsCount: analyzedResults.length,
-      passed: analyzedResults.filter(j => j.status === MilkStatus.ANALYZED).length,
-      rejected: analyzedResults.filter(j => j.status === MilkStatus.DISCARDED).length,
-      details: analyzedResults
-    }, ...prev]);
-
-    setSelectedJarIds([]);
+  const handleAnalysisComplete = (processedBatch: MilkBatch) => {
+    // Remove from pending list
+    setBatches(prev => prev.filter(b => b.id !== processedBatch.id));
+    setSelectedBatch(null);
     setView('LIST');
   };
 
-  if (view === 'WIZARD') {
-    const selectedJarsObjects = jars.filter(j => selectedJarIds.includes(j.id));
+  const getMilkTypeStyles = (type: MilkType) => {
+    switch (type) {
+      case MilkType.COLOSTRUM: 
+        return 'bg-yellow-50 text-yellow-700 border-yellow-200';
+      case MilkType.TRANSITION:
+        return 'bg-orange-50 text-orange-700 border-orange-200';
+      case MilkType.MATURE:
+        return 'bg-blue-50 text-blue-700 border-blue-200';
+      default:
+        return 'bg-slate-50 text-slate-700 border-slate-200';
+    }
+  };
+
+  if (view === 'WIZARD' && selectedBatch) {
     return (
       <AnalysisWizard 
-        selectedJars={selectedJarsObjects}
+        batch={selectedBatch}
         onComplete={handleAnalysisComplete}
         onCancel={() => setView('LIST')}
       />
@@ -81,20 +67,12 @@ const Analysis: React.FC = () => {
       {/* HEADER */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-slate-800">Control de Calidad: Análisis</h2>
-          <p className="text-slate-500">Validación fisicoquímica de frascos verificados</p>
+          <h2 className="text-2xl font-bold text-slate-800">Módulo de Análisis</h2>
+          <p className="text-slate-500">Gestión integral: Pasteurización, Físico y Fisicoquímico</p>
         </div>
         <div className="flex gap-2">
            <button className="px-4 py-2 border border-slate-200 bg-white rounded-lg text-slate-600 hover:bg-slate-50 flex items-center gap-2">
              <History size={18} /> Historial
-           </button>
-           <button 
-             onClick={startAnalysis}
-             disabled={selectedJarIds.length === 0}
-             className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-           >
-             <TestTube2 size={20} />
-             Analizar ({selectedJarIds.length})
            </button>
         </div>
       </div>
@@ -103,82 +81,81 @@ const Analysis: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
            <div>
-             <p className="text-xs text-slate-500 uppercase font-bold">Pendientes de Análisis</p>
-             <p className="text-2xl font-bold text-slate-800">{jars.length}</p>
+             <p className="text-xs text-slate-500 uppercase font-bold">Lotes Pendientes</p>
+             <p className="text-2xl font-bold text-slate-800">{batches.length}</p>
            </div>
-           <div className="p-3 bg-purple-100 rounded-full text-purple-600">
-             <TestTube2 size={24} />
+           <div className="p-3 bg-amber-100 rounded-full text-amber-600">
+             <FlaskConical size={24} />
            </div>
          </div>
          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
            <div>
-             <p className="text-xs text-slate-500 uppercase font-bold">Analizados Hoy</p>
-             <p className="text-2xl font-bold text-emerald-600">{analysisHistory.reduce((acc, curr) => acc + curr.jarsCount, 0)}</p>
+             <p className="text-xs text-slate-500 uppercase font-bold">Procesados Hoy</p>
+             <p className="text-2xl font-bold text-emerald-600">{analyzedCount}</p>
            </div>
            <div className="p-3 bg-emerald-100 rounded-full text-emerald-600">
-             <Check size={24} />
+             <TestTube2 size={24} />
            </div>
          </div>
       </div>
 
-      {/* JAR SELECTION LIST */}
+      {/* BATCH LIST */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
-          <h3 className="font-bold text-slate-700">Frascos Disponibles para Análisis</h3>
-          <div className="flex gap-2 text-sm text-slate-500">
-             <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-blue-500"></div> Calostro</span>
-             <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-orange-500"></div> Madura</span>
-          </div>
+        <div className="p-4 border-b border-slate-200 bg-slate-50">
+          <h3 className="font-bold text-slate-700 flex items-center gap-2">
+            <FlaskConical size={18} className="text-slate-400"/>
+            Lotes Listos para Procesamiento
+          </h3>
         </div>
         
         <table className="w-full text-left">
           <thead className="bg-white text-slate-500 text-sm border-b border-slate-100">
              <tr>
-               <th className="px-4 py-3 w-12 text-center">
-                 <input type="checkbox" className="rounded" disabled /> 
-               </th>
-               <th className="px-4 py-3">Folio</th>
-               <th className="px-4 py-3">Donadora</th>
-               <th className="px-4 py-3">Volumen / Tipo</th>
-               <th className="px-4 py-3">Tiempo Espera</th>
-               <th className="px-4 py-3 text-right">Estado</th>
+               <th className="px-6 py-3">Folio Lote</th>
+               <th className="px-6 py-3">Donantes</th>
+               <th className="px-6 py-3">Volumen • Tipo</th>
+               <th className="px-6 py-3">Fecha Formación</th>
+               <th className="px-6 py-3 text-right">Acción</th>
              </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 text-sm">
-             {jars.map(jar => (
-               <tr key={jar.id} className={`hover:bg-slate-50 cursor-pointer ${selectedJarIds.includes(jar.id) ? 'bg-purple-50 hover:bg-purple-100' : ''}`} onClick={() => handleSelectionChange(jar.id)}>
-                 <td className="px-4 py-3 text-center">
-                   <input 
-                     type="checkbox" 
-                     className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500"
-                     checked={selectedJarIds.includes(jar.id)}
-                     onChange={() => {}} 
-                   />
-                 </td>
-                 <td className="px-4 py-3 font-medium text-slate-800">{jar.folio}</td>
-                 <td className="px-4 py-3">{jar.donorName}</td>
-                 <td className="px-4 py-3">
-                   <div className="flex items-center gap-2">
-                      <span className={`w-2 h-2 rounded-full ${jar.milkType === MilkType.COLOSTRUM ? 'bg-blue-500' : 'bg-orange-500'}`}></span>
-                      {jar.volumeMl}mL • {jar.milkType}
+             {batches.map(batch => (
+               <tr key={batch.id} className="hover:bg-slate-50 transition-colors">
+                 <td className="px-6 py-4 font-mono font-bold text-slate-700">{batch.folio}</td>
+                 <td className="px-6 py-4">
+                   <div className="flex flex-col">
+                     <span className="font-medium text-slate-800">{batch.donors.length} participantes</span>
+                     <span className="text-xs text-slate-400 truncate max-w-[200px]">
+                       {batch.donors.map(d => d.name).join(', ')}
+                     </span>
                    </div>
                  </td>
-                 <td className="px-4 py-3 text-slate-500">
-                   2 horas
+                 <td className="px-6 py-4">
+                   <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border ${getMilkTypeStyles(batch.milkType)}`}>
+                      <span className="font-bold">{batch.volumeTotalMl} mL</span>
+                      <span className="text-xs opacity-60">•</span>
+                      <span className="text-xs font-bold uppercase tracking-wider">{batch.milkType}</span>
+                   </div>
                  </td>
-                 <td className="px-4 py-3 text-right">
-                   <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-700">
-                     Verificado
-                   </span>
+                 <td className="px-6 py-4 text-slate-500">
+                   {new Date(batch.creationDate).toLocaleDateString()}
+                 </td>
+                 <td className="px-6 py-4 text-right">
+                   <button 
+                     onClick={() => startAnalysis(batch)}
+                     className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium shadow-sm transition-colors text-xs"
+                   >
+                     <Play size={14} fill="currentColor" /> Iniciar Proceso
+                   </button>
                  </td>
                </tr>
              ))}
-             {jars.length === 0 && (
+             {batches.length === 0 && (
                <tr>
-                 <td colSpan={6} className="p-8 text-center text-slate-400">
+                 <td colSpan={5} className="p-12 text-center text-slate-400">
                    <div className="flex flex-col items-center gap-2">
-                     <AlertCircle size={24} />
-                     No hay frascos verificados pendientes de análisis.
+                     <AlertCircle size={32} className="opacity-20"/>
+                     <p>No hay lotes pendientes de análisis.</p>
                    </div>
                  </td>
                </tr>
@@ -186,27 +163,6 @@ const Analysis: React.FC = () => {
           </tbody>
         </table>
       </div>
-
-      {/* History Log (Mini) */}
-      {analysisHistory.length > 0 && (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-           <h3 className="font-bold text-slate-800 mb-4">Lotes Recientes</h3>
-           <div className="space-y-3">
-             {analysisHistory.map((batch, idx) => (
-               <div key={idx} className="flex items-center justify-between p-3 border border-slate-100 rounded-lg bg-slate-50">
-                  <div>
-                    <p className="font-bold text-slate-700">Lote Análisis #{batch.id.substr(0,4)}</p>
-                    <p className="text-xs text-slate-500">{new Date(batch.date).toLocaleString()}</p>
-                  </div>
-                  <div className="flex gap-4 text-sm">
-                    <span className="text-emerald-600 font-bold">{batch.passed} Aprobados</span>
-                    <span className="text-red-600 font-bold">{batch.rejected} Rechazados</span>
-                  </div>
-               </div>
-             ))}
-           </div>
-        </div>
-      )}
     </div>
   );
 };

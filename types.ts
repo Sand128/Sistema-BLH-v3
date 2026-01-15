@@ -38,9 +38,16 @@ export enum CaloricClassification {
 
 export interface LabResult {
   id: string;
-  testName: 'VIH' | 'VDRL' | 'Hepatitis B' | 'Hepatitis C';
-  result: 'Reactivo' | 'No Reactivo';
-  date: string;
+  testName: string;
+  category?: 'BIOCHEMISTRY' | 'SEROLOGY'; // New category for grouping
+  timing?: {
+    before: boolean;
+    during: boolean;
+    after: boolean;
+  };
+  result: string; // 'Reactivo', 'No Reactivo' or numeric value as string
+  resultDate: string;
+  isReactive?: boolean; // Helper for UI alerts
   notes?: string;
 }
 
@@ -158,6 +165,16 @@ export interface Donor {
   totalVolumeLiters?: number;
 }
 
+export interface TransportData {
+  transportTimeMinutes: number;
+  isothermicBox: boolean;
+  icePacksQty: number; // Liters/Units estimate
+  packagingState: 'Integro' | 'Dañado';
+  temperatureOnArrival: number;
+  receptionTime: string;
+  arrivalState: 'Congelada' | 'Refrigerada';
+}
+
 export interface MilkJar {
   id: string;
   folio: string; // e.g., HO-2024-05-27-001
@@ -172,6 +189,14 @@ export interface MilkJar {
   extractionPlace: 'Lactario' | 'Domicilio' | 'Centro de Acopio';
   receptionTemperature: number;
   
+  // Entry Validation
+  clean: boolean;
+  sealed: boolean;
+  labeled: boolean;
+  
+  // Logistics (External)
+  transportData?: TransportData;
+
   status: MilkStatus;
   location?: string; // Text description or ID
   

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   User, 
   Layers, 
@@ -9,7 +9,9 @@ import {
   Users, 
   Lock, 
   HelpCircle,
-  Menu
+  Milk,
+  ChevronDown,
+  ChevronRight
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -20,10 +22,21 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView, isOpen, setIsOpen }) => {
-  // Strict menu order based on institutional requirements
+  // State to manage expanded menus
+  const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
+
+  // Menu structure definition
   const menuItems = [
     { id: 'donors', label: 'Donadora', icon: User },
-    { id: 'batches', label: 'Lotes', icon: Layers },
+    { 
+      id: 'collection', 
+      label: 'Recolección', 
+      icon: Milk,
+      subItems: [
+        { id: 'jars', label: 'Frascos' },
+        { id: 'batches', label: 'Lotes' }
+      ]
+    },
     { id: 'analysis', label: 'Análisis', icon: Microscope },
     { id: 'receivers', label: 'Dosificación', icon: Syringe },
     { id: 'reports', label: 'Reportes', icon: FileText },
@@ -32,6 +45,31 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView, isOpen, 
     { id: 'auth', label: 'Autenticación', icon: Lock }, // Mapped to Users/Settings logically
     { id: 'assistant', label: 'Ayuda', icon: HelpCircle },
   ];
+
+  // Auto-expand parent if a child is active
+  useEffect(() => {
+    menuItems.forEach(item => {
+      if (item.subItems) {
+        const hasActiveChild = item.subItems.some(sub => sub.id === currentView);
+        if (hasActiveChild && !expandedMenus.includes(item.id)) {
+          setExpandedMenus(prev => [...prev, item.id]);
+        }
+      }
+    });
+  }, [currentView]);
+
+  const toggleMenu = (id: string) => {
+    setExpandedMenus(prev => 
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleNavigation = (viewId: string) => {
+    // Mapping logic for legacy/special views
+    const targetView = viewId === 'auth' ? 'users' : viewId;
+    setCurrentView(targetView);
+    if (window.innerWidth < 1024) setIsOpen(false);
+  };
 
   return (
     <>
@@ -62,31 +100,77 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView, isOpen, 
         {/* Menu Items */}
         <nav className="flex-1 overflow-y-auto py-6">
           <ul className="space-y-1 px-4">
-            {menuItems.map((item) => (
-              <li key={item.id}>
-                <button
-                  onClick={() => {
-                    // Mapping logic for new labels to existing views
-                    const targetView = item.id === 'auth' ? 'users' : item.id;
-                    setCurrentView(targetView);
-                    if (window.innerWidth < 1024) setIsOpen(false);
-                  }}
-                  className={`
-                    w-full flex items-center gap-4 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200
-                    ${currentView === item.id || (item.id === 'auth' && currentView === 'users_auth')
-                      ? 'bg-slate-100 text-slate-900' 
-                      : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'}
-                  `}
-                >
-                  <item.icon strokeWidth={1.5} size={20} className={
-                    currentView === item.id 
-                      ? 'text-slate-800' 
-                      : 'text-slate-400 group-hover:text-slate-600'
-                  } />
-                  <span>{item.label}</span>
-                </button>
-              </li>
-            ))}
+            {menuItems.map((item) => {
+              // --- RENDERIZADO DE MÓDULO CON SUBMENÚS (Recolección) ---
+              if (item.subItems) {
+                const isExpanded = expandedMenus.includes(item.id);
+                const isActiveParent = item.subItems.some(sub => sub.id === currentView);
+                
+                return (
+                  <li key={item.id}>
+                    <button
+                      onClick={() => toggleMenu(item.id)}
+                      className={`
+                        w-full flex items-center justify-between px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200
+                        ${isActiveParent ? 'bg-slate-50 text-slate-900' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'}
+                      `}
+                    >
+                      <div className="flex items-center gap-4">
+                        <item.icon strokeWidth={1.5} size={20} className={isActiveParent ? 'text-slate-800' : 'text-slate-400'} />
+                        <span>{item.label}</span>
+                      </div>
+                      {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                    </button>
+
+                    {/* Submenu Items */}
+                    {isExpanded && (
+                      <ul className="mt-1 space-y-1 pl-11">
+                        {item.subItems.map(sub => (
+                          <li key={sub.id}>
+                            <button
+                              onClick={() => handleNavigation(sub.id)}
+                              className={`
+                                w-full text-left px-3 py-2 rounded-lg text-sm transition-colors relative
+                                ${currentView === sub.id 
+                                  ? 'text-pink-600 font-medium bg-pink-50' 
+                                  : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'}
+                              `}
+                            >
+                              {currentView === sub.id && (
+                                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-4 bg-pink-500 rounded-r-full"></div>
+                              )}
+                              {sub.label}
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </li>
+                );
+              }
+
+              // --- RENDERIZADO DE MÓDULO SIMPLE ---
+              return (
+                <li key={item.id}>
+                  <button
+                    onClick={() => handleNavigation(item.id)}
+                    className={`
+                      w-full flex items-center gap-4 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200
+                      ${currentView === item.id || (item.id === 'auth' && currentView === 'users_auth')
+                        ? 'bg-slate-100 text-slate-900' 
+                        : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'}
+                    `}
+                  >
+                    <item.icon strokeWidth={1.5} size={20} className={
+                      currentView === item.id 
+                        ? 'text-slate-800' 
+                        : 'text-slate-400 group-hover:text-slate-600'
+                    } />
+                    <span>{item.label}</span>
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         </nav>
 
