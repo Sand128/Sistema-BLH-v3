@@ -12,7 +12,8 @@ import {
   Milk,
   ChevronDown,
   ChevronRight,
-  Package
+  Package,
+  LayoutDashboard
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -28,6 +29,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView, isOpen, 
 
   // Menu structure definition
   const menuItems = [
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'donors', label: 'Donadora', icon: User },
     { 
       id: 'collection', 

@@ -480,6 +480,7 @@ export interface SystemAlert {
   entityId?: string;
   timestamp: string;
   actionLabel?: string;
+  targetView?: string; // New: View to navigate to
 }
 
 export interface ActivityLog {

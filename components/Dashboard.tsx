@@ -21,9 +21,30 @@ import { SystemAlert, ActivityLog } from '../types';
 
 // --- MOCK DATA ---
 const ALERTS: SystemAlert[] = [
-  { id: '1', type: 'critical', message: 'Lote LP-2024-05-001 vence en 3 días', timestamp: 'Hace 2 horas', actionLabel: 'Gestionar' },
-  { id: '2', type: 'warning', message: '2 frascos en análisis por más de 24h', timestamp: 'Hace 4 horas', actionLabel: 'Ver Análisis' },
-  { id: '3', type: 'critical', message: 'Temp. Congelador A: -15°C (Fuera de rango)', timestamp: 'Hace 10 min', actionLabel: 'Revisar IoT' },
+  { 
+    id: '1', 
+    type: 'critical', 
+    message: 'Lote LP-2024-05-001 vence en 3 días', 
+    timestamp: 'Hace 2 horas', 
+    actionLabel: 'Gestionar Inventario',
+    targetView: 'inventory'
+  },
+  { 
+    id: '2', 
+    type: 'warning', 
+    message: '2 frascos en análisis por más de 24h', 
+    timestamp: 'Hace 4 horas', 
+    actionLabel: 'Ver Análisis',
+    targetView: 'analysis'
+  },
+  { 
+    id: '3', 
+    type: 'critical', 
+    message: 'Temp. Congelador A: -15°C (Fuera de rango)', 
+    timestamp: 'Hace 10 min', 
+    actionLabel: 'Revisar IoT',
+    targetView: 'inventory'
+  },
 ];
 
 const DATA_MILK_ENTRIES = [
@@ -54,8 +75,13 @@ const MetricCard = ({ title, value, unit, icon: Icon, color, subtext }: any) => 
   </div>
 );
 
-const AlertItem: React.FC<{ alert: SystemAlert }> = ({ alert }) => (
-  <div className={`flex items-start gap-3 p-3 rounded-lg border ${
+interface AlertItemProps {
+  alert: SystemAlert;
+  onAction: () => void;
+}
+
+const AlertItem: React.FC<AlertItemProps> = ({ alert, onAction }) => (
+  <div className={`flex items-start gap-3 p-3 rounded-lg border transition-all ${
     alert.type === 'critical' ? 'bg-red-50 border-red-100' : 'bg-orange-50 border-orange-100'
   }`}>
     <AlertTriangle size={18} className={`mt-0.5 flex-shrink-0 ${
@@ -70,10 +96,13 @@ const AlertItem: React.FC<{ alert: SystemAlert }> = ({ alert }) => (
           {alert.timestamp}
         </span>
         {alert.actionLabel && (
-          <button className={`text-xs font-semibold hover:underline ${
-            alert.type === 'critical' ? 'text-red-700' : 'text-orange-700'
-          }`}>
-            {alert.actionLabel}
+          <button 
+            onClick={onAction}
+            className={`text-xs font-bold hover:underline flex items-center gap-1 ${
+              alert.type === 'critical' ? 'text-red-700 hover:text-red-900' : 'text-orange-700 hover:text-orange-900'
+            }`}
+          >
+            {alert.actionLabel} <ArrowRight size={10} />
           </button>
         )}
       </div>
@@ -110,6 +139,12 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   const handleTraceabilitySearch = (e: React.FormEvent) => {
     e.preventDefault();
     alert(`Buscando trazabilidad para: ${traceabilityId}`);
+  };
+
+  const handleAlertClick = (targetView?: string) => {
+    if (targetView) {
+      onNavigate(targetView);
+    }
   };
 
   return (
@@ -274,7 +309,11 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             </div>
             <div className="p-4 space-y-3">
               {ALERTS.map(alert => (
-                <AlertItem key={alert.id} alert={alert} />
+                <AlertItem 
+                  key={alert.id} 
+                  alert={alert} 
+                  onAction={() => handleAlertClick(alert.targetView)}
+                />
               ))}
             </div>
             <div className="p-3 bg-slate-50 border-t border-slate-100 text-center">
