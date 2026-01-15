@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search } from 'lucide-react';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header'; 
@@ -12,12 +12,34 @@ import Receivers from './components/Receivers';
 import Reports from './components/Reports';
 import Users from './components/Users';
 import AIAssistant from './components/AIAssistant';
-import WasteRegistry from './components/WasteRegistry'; // Import new module
+import WasteRegistry from './components/WasteRegistry'; 
+import Login from './components/Login';
 import { NotificationProvider } from './context/NotificationContext';
 
 const App: React.FC = () => {
+  // Auth State
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [currentView, setCurrentView] = useState('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  // Check for session (Simple Mock Persistence)
+  useEffect(() => {
+    const session = localStorage.getItem('blh_session');
+    if (session === 'active') {
+      setIsAuthenticated(true);
+    }
+  }, []);
+
+  const handleLoginSuccess = () => {
+    localStorage.setItem('blh_session', 'active');
+    setIsAuthenticated(true);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('blh_session');
+    setIsAuthenticated(false);
+    setCurrentView('dashboard'); // Reset view
+  };
 
   const renderView = () => {
     switch (currentView) {
@@ -28,10 +50,14 @@ const App: React.FC = () => {
       case 'batches': return <Batches />;
       case 'inventory': return <Inventory />;
       case 'receivers': return <Receivers />;
-      case 'waste': return <WasteRegistry />; // New Route
+      case 'waste': return <WasteRegistry />; 
       case 'reports': return <Reports />;
       case 'users': return <Users />;
       case 'assistant': return <AIAssistant />;
+      // Handle explicit auth/logout request from sidebar if needed
+      case 'auth': 
+        handleLogout();
+        return null;
       default: return (
         <div className="flex flex-col items-center justify-center h-full text-slate-400 dark:text-slate-600">
           <div className="bg-slate-100 dark:bg-slate-800 p-8 rounded-full mb-4">
@@ -43,6 +69,11 @@ const App: React.FC = () => {
       );
     }
   };
+
+  // --- GATEKEEPER ---
+  if (!isAuthenticated) {
+    return <Login onLoginSuccess={handleLoginSuccess} />;
+  }
 
   return (
     <NotificationProvider>
@@ -57,7 +88,7 @@ const App: React.FC = () => {
 
         {/* Main Content Area */}
         <main className="flex-1 flex flex-col h-screen overflow-hidden relative">
-          {/* Global App Header - Now passing navigation handler */}
+          {/* Global App Header */}
           <Header 
             onMenuClick={() => setIsSidebarOpen(true)} 
             onNavigate={setCurrentView}
