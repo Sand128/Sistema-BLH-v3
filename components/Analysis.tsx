@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { History, TestTube2, AlertCircle, FlaskConical, Play } from 'lucide-react';
 import { MilkBatch, MilkStatus, MilkType } from '../types';
 import AnalysisWizard from './AnalysisWizard';
 
-// Mock Batches ready for Analysis (Statuses: RAW or RAW_POOL)
+// Mock Batches as fallback
 const MOCK_READY_BATCHES: MilkBatch[] = [
   { 
     id: 'B1', folio: 'LP-2024-05-27-001', type: 'Heteróloga', milkType: MilkType.COLOSTRUM, volumeTotalMl: 450,
@@ -12,20 +12,35 @@ const MOCK_READY_BATCHES: MilkBatch[] = [
   { 
     id: 'B2', folio: 'LP-2024-05-27-002', type: 'Homóloga', milkType: MilkType.MATURE, volumeTotalMl: 1200,
     status: MilkStatus.RAW, creationDate: '2024-05-27', donors: [{id:'2', name:'Ana L.'}], jarIds: ['3']
-  },
-  { 
-    id: 'B3', folio: 'LP-2024-05-26-003', type: 'Heteróloga', milkType: MilkType.TRANSITION, volumeTotalMl: 850,
-    status: MilkStatus.RAW, creationDate: '2024-05-26', donors: [{id:'3', name:'Rosa M.'}], jarIds: ['4','5']
   }
 ];
 
 const Analysis: React.FC = () => {
   const [view, setView] = useState<'LIST' | 'WIZARD'>('LIST');
-  const [batches, setBatches] = useState<MilkBatch[]>(MOCK_READY_BATCHES);
   const [selectedBatch, setSelectedBatch] = useState<MilkBatch | null>(null);
   
-  // Stats
-  const analyzedCount = 5; // Mock for daily stats
+  // 1. Fetch batches from localStorage and Filter for RAW status
+  const [batches, setBatches] = useState<MilkBatch[]>(() => {
+    try {
+      const saved = localStorage.getItem('app_batches');
+      const allBatches = saved ? JSON.parse(saved) : MOCK_READY_BATCHES;
+      // ONLY show batches that are waiting for analysis (RAW)
+      return allBatches.filter((b: MilkBatch) => b.status === MilkStatus.RAW);
+    } catch (e) {
+      console.error("Error loading batches in Analysis", e);
+      return MOCK_READY_BATCHES;
+    }
+  });
+  
+  // Stats calculation
+  const [stats, setStats] = useState({
+    pending: 0,
+    processedToday: 5
+  });
+
+  useEffect(() => {
+    setStats(prev => ({ ...prev, pending: batches.length }));
+  }, [batches]);
 
   const startAnalysis = (batch: MilkBatch) => {
     setSelectedBatch(batch);
@@ -33,8 +48,24 @@ const Analysis: React.FC = () => {
   };
 
   const handleAnalysisComplete = (processedBatch: MilkBatch) => {
-    // Remove from pending list
+    // 1. Update the MAIN database (localStorage)
+    try {
+      const saved = localStorage.getItem('app_batches');
+      if (saved) {
+        const allBatches = JSON.parse(saved);
+        const updatedAll = allBatches.map((b: MilkBatch) => 
+          b.id === processedBatch.id ? processedBatch : b
+        );
+        localStorage.setItem('app_batches', JSON.stringify(updatedAll));
+      }
+    } catch (e) {
+      console.error("Failed to update global batch storage", e);
+    }
+
+    // 2. Remove from LOCAL pending list (since it's no longer RAW)
     setBatches(prev => prev.filter(b => b.id !== processedBatch.id));
+    setStats(prev => ({ ...prev, processedToday: prev.processedToday + 1 }));
+    
     setSelectedBatch(null);
     setView('LIST');
   };
@@ -82,7 +113,7 @@ const Analysis: React.FC = () => {
          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
            <div>
              <p className="text-xs text-slate-500 uppercase font-bold">Lotes Pendientes</p>
-             <p className="text-2xl font-bold text-slate-800">{batches.length}</p>
+             <p className="text-2xl font-bold text-slate-800">{stats.pending}</p>
            </div>
            <div className="p-3 bg-amber-100 rounded-full text-amber-600">
              <FlaskConical size={24} />
@@ -91,7 +122,7 @@ const Analysis: React.FC = () => {
          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
            <div>
              <p className="text-xs text-slate-500 uppercase font-bold">Procesados Hoy</p>
-             <p className="text-2xl font-bold text-emerald-600">{analyzedCount}</p>
+             <p className="text-2xl font-bold text-emerald-600">{stats.processedToday}</p>
            </div>
            <div className="p-3 bg-emerald-100 rounded-full text-emerald-600">
              <TestTube2 size={24} />
@@ -104,7 +135,7 @@ const Analysis: React.FC = () => {
         <div className="p-4 border-b border-slate-200 bg-slate-50">
           <h3 className="font-bold text-slate-700 flex items-center gap-2">
             <FlaskConical size={18} className="text-slate-400"/>
-            Lotes Listos para Procesamiento
+            Lotes Listos para Procesamiento (Estado: Cruda)
           </h3>
         </div>
         
@@ -156,6 +187,7 @@ const Analysis: React.FC = () => {
                    <div className="flex flex-col items-center gap-2">
                      <AlertCircle size={32} className="opacity-20"/>
                      <p>No hay lotes pendientes de análisis.</p>
+                     <p className="text-xs">Cree nuevos lotes en el módulo "Recolección &gt; Lotes"</p>
                    </div>
                  </td>
                </tr>

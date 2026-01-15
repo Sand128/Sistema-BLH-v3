@@ -29,8 +29,17 @@ const INITIAL_JARS: MilkJar[] = [
 ];
 
 const Jars: React.FC = () => {
-  // State
-  const [jars, setJars] = useState<MilkJar[]>(INITIAL_JARS);
+  // State: Initialize from localStorage + Initial Mock Data
+  const [jars, setJars] = useState<MilkJar[]>(() => {
+    try {
+      const saved = localStorage.getItem('app_jars');
+      return saved ? [...JSON.parse(saved), ...INITIAL_JARS] : INITIAL_JARS;
+    } catch (e) {
+      console.error("Failed to load jars", e);
+      return INITIAL_JARS;
+    }
+  });
+
   const [selectedDonor, setSelectedDonor] = useState<Partial<Donor> | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [notification, setNotification] = useState<{type: 'success' | 'error', message: string} | null>(null);
@@ -118,7 +127,14 @@ const Jars: React.FC = () => {
     };
 
     // 3. Save (Mock)
-    setJars([newJar, ...jars]);
+    const updatedJars = [newJar, ...jars];
+    setJars(updatedJars);
+    
+    // Persist to local storage so DonorDetail sees consistency if refreshed/navigated
+    // Note: In this direction (Jars -> Jars), we don't strictly need LS for immediate view, 
+    // but good practice to keep them in sync for the other way around.
+    const existingLs = JSON.parse(localStorage.getItem('app_jars') || '[]');
+    localStorage.setItem('app_jars', JSON.stringify([newJar, ...existingLs]));
     
     // 4. Feedback & Reset
     setNotification({ type: 'success', message: 'El frasco se guardó correctamente.' });

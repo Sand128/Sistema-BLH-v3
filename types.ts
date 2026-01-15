@@ -36,6 +36,16 @@ export enum CaloricClassification {
   HYPERCALORIC = 'Hipercalórica'
 }
 
+export interface AppNotification {
+  id: string;
+  title: string;
+  message?: string;
+  timestamp: Date;
+  read: boolean;
+  type: 'info' | 'success' | 'warning' | 'error';
+  targetView?: string;
+}
+
 export interface LabResult {
   id: string;
   testName: string;

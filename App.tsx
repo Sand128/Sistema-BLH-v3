@@ -12,6 +12,7 @@ import Receivers from './components/Receivers';
 import Reports from './components/Reports';
 import Users from './components/Users';
 import AIAssistant from './components/AIAssistant';
+import { NotificationProvider } from './context/NotificationContext';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState('dashboard');
@@ -42,31 +43,33 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 overflow-hidden font-sans transition-colors duration-200">
-      {/* Sidebar Navigation */}
-      <Sidebar 
-        currentView={currentView} 
-        setCurrentView={setCurrentView} 
-        isOpen={isSidebarOpen}
-        setIsOpen={setIsSidebarOpen}
-      />
-
-      {/* Main Content Area */}
-      <main className="flex-1 flex flex-col h-screen overflow-hidden relative">
-        {/* Global App Header - Now passing navigation handler */}
-        <Header 
-          onMenuClick={() => setIsSidebarOpen(true)} 
-          onNavigate={setCurrentView}
+    <NotificationProvider>
+      <div className="flex h-screen bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 overflow-hidden font-sans transition-colors duration-200">
+        {/* Sidebar Navigation */}
+        <Sidebar 
+          currentView={currentView} 
+          setCurrentView={setCurrentView} 
+          isOpen={isSidebarOpen}
+          setIsOpen={setIsSidebarOpen}
         />
 
-        {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto bg-slate-50/50 dark:bg-slate-900/50">
-           <div className="p-4 md:p-8 min-h-full">
-             {renderView()}
-           </div>
-        </div>
-      </main>
-    </div>
+        {/* Main Content Area */}
+        <main className="flex-1 flex flex-col h-screen overflow-hidden relative">
+          {/* Global App Header - Now passing navigation handler */}
+          <Header 
+            onMenuClick={() => setIsSidebarOpen(true)} 
+            onNavigate={setCurrentView}
+          />
+
+          {/* Scrollable Content */}
+          <div className="flex-1 overflow-y-auto bg-slate-50/50 dark:bg-slate-900/50">
+             <div className="p-4 md:p-8 min-h-full">
+               {renderView()}
+             </div>
+          </div>
+        </main>
+      </div>
+    </NotificationProvider>
   );
 };
 

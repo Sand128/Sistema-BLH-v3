@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Plus, Search, Filter, Eye, FlaskConical, CheckCircle2, AlertCircle } from 'lucide-react';
 import { MilkBatch, MilkStatus, MilkType, MilkJar, DonorType } from '../types';
 import BatchWizard from './BatchWizard';
@@ -9,56 +9,29 @@ const MOCK_BATCHES: MilkBatch[] = [
   { 
     id: '1', folio: 'LP-2024-05-20-001', type: 'Heteróloga', milkType: MilkType.COLOSTRUM, volumeTotalMl: 150,
     status: MilkStatus.RELEASED, creationDate: '2024-05-20', expirationDate: '2024-11-20',
-    donors: [{id: '1', name: 'María G.'}, {id: '2', name: 'Ana L.'}], jarIds: ['1','2','3'],
+    donors: [{id: '1', name: 'María G.'}, {id: '2', name: 'Ana L.'}], jarIds: ['101','102','103'], // IDs that don't conflict with new ones
     pasteurization: { date: '2024-05-20', tempCurve: [], responsible: 'Juan P.', completed: true }
   },
   { 
     id: '2', folio: 'LP-2024-05-25-002', type: 'Heteróloga', milkType: MilkType.MATURE, volumeTotalMl: 200,
     status: MilkStatus.QUARANTINE, creationDate: '2024-05-25',
-    donors: [{id: '3', name: 'Rosa M.'}], jarIds: ['4'],
+    donors: [{id: '3', name: 'Rosa M.'}], jarIds: ['104'],
     pasteurization: { date: '2024-05-25', tempCurve: [], responsible: 'Juan P.', completed: true },
     microbiology: { sowingDate: '2024-05-25' }
   }
 ];
 
-// Mock Approved Jars (Source of Truth for "Ready to Batch")
-// Includes jars already used in MOCK_BATCHES (1-4) and new available ones (5-8)
-const MOCK_APPROVED_JARS: MilkJar[] = [
+// Fallback data if localStorage is empty
+const INITIAL_JARS_FALLBACK: MilkJar[] = [
   { 
-    id: '1', folio: 'HO-001', donorId: '1', donorName: 'María G.', donorType: DonorType.HOMOLOGOUS_INTERNAL,
-    volumeMl: 50, milkType: MilkType.COLOSTRUM, extractionDate: '2024-05-27', extractionTime: '10:00', extractionPlace: 'Lactario',
-    receptionTemperature: 4, status: MilkStatus.ANALYZED, history: [], clean: true, sealed: true, labeled: true
+    id: '1', folio: 'HO-2024-05-27-001', donorId: '1', donorName: 'María González Pérez', donorType: DonorType.HOMOLOGOUS_INTERNAL,
+    volumeMl: 50, milkType: MilkType.COLOSTRUM, extractionDate: new Date().toISOString().split('T')[0], extractionTime: '08:30', extractionPlace: 'Lactario',
+    receptionTemperature: 4.2, status: MilkStatus.RAW, history: [], clean: true, sealed: true, labeled: true
   },
   { 
-    id: '2', folio: 'HO-002', donorId: '1', donorName: 'María G.', donorType: DonorType.HOMOLOGOUS_INTERNAL,
-    volumeMl: 50, milkType: MilkType.COLOSTRUM, extractionDate: '2024-05-27', extractionTime: '11:00', extractionPlace: 'Lactario',
-    receptionTemperature: 4, status: MilkStatus.ANALYZED, history: [], clean: true, sealed: true, labeled: true
-  },
-  { 
-    id: '3', folio: 'HO-003', donorId: '2', donorName: 'Ana L.', donorType: DonorType.HETEROLOGOUS,
-    volumeMl: 50, milkType: MilkType.COLOSTRUM, extractionDate: '2024-05-26', extractionTime: '09:00', extractionPlace: 'Domicilio',
-    receptionTemperature: 5, status: MilkStatus.ANALYZED, history: [], clean: true, sealed: true, labeled: true
-  },
-  { 
-    id: '4', folio: 'HO-004', donorId: '3', donorName: 'Rosa M.', donorType: DonorType.HETEROLOGOUS,
-    volumeMl: 200, milkType: MilkType.MATURE, extractionDate: '2024-05-25', extractionTime: '08:00', extractionPlace: 'Domicilio',
-    receptionTemperature: 4, status: MilkStatus.ANALYZED, history: [], clean: true, sealed: true, labeled: true
-  },
-  // --- Available Jars ---
-  { 
-    id: '5', folio: 'HO-005', donorId: '4', donorName: 'Laura S.', donorType: DonorType.HETEROLOGOUS,
-    volumeMl: 100, milkType: MilkType.MATURE, extractionDate: '2024-05-28', extractionTime: '08:30', extractionPlace: 'Domicilio',
-    receptionTemperature: 4, status: MilkStatus.ANALYZED, history: [], clean: true, sealed: true, labeled: true
-  },
-  { 
-    id: '6', folio: 'HO-006', donorId: '4', donorName: 'Laura S.', donorType: DonorType.HETEROLOGOUS,
-    volumeMl: 110, milkType: MilkType.MATURE, extractionDate: '2024-05-28', extractionTime: '10:30', extractionPlace: 'Domicilio',
-    receptionTemperature: 4, status: MilkStatus.ANALYZED, history: [], clean: true, sealed: true, labeled: true
-  },
-  { 
-    id: '7', folio: 'HO-007', donorId: '5', donorName: 'Carmen V.', donorType: DonorType.HETEROLOGOUS,
-    volumeMl: 150, milkType: MilkType.MATURE, extractionDate: '2024-05-29', extractionTime: '09:00', extractionPlace: 'Domicilio',
-    receptionTemperature: 3.5, status: MilkStatus.ANALYZED, history: [], clean: true, sealed: true, labeled: true
+    id: '2', folio: 'HO-2024-05-27-002', donorId: '2', donorName: 'Ana López Martínez', donorType: DonorType.HETEROLOGOUS,
+    volumeMl: 120, milkType: MilkType.MATURE, extractionDate: new Date().toISOString().split('T')[0], extractionTime: '09:15', extractionPlace: 'Domicilio',
+    receptionTemperature: 5.0, status: MilkStatus.RAW, history: [], clean: true, sealed: true, labeled: true
   }
 ];
 
@@ -66,20 +39,51 @@ type ViewState = 'LIST' | 'CREATE' | 'DETAIL';
 
 const Batches: React.FC = () => {
   const [view, setView] = useState<ViewState>('LIST');
-  const [batches, setBatches] = useState<MilkBatch[]>(MOCK_BATCHES);
+  
+  // 1. Initialize Batches from localStorage (Source of Truth)
+  const [batches, setBatches] = useState<MilkBatch[]>(() => {
+    try {
+      const saved = localStorage.getItem('app_batches');
+      return saved ? JSON.parse(saved) : MOCK_BATCHES;
+    } catch (e) {
+      console.error("Error loading batches", e);
+      return MOCK_BATCHES;
+    }
+  });
+
   const [selectedBatch, setSelectedBatch] = useState<MilkBatch | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Calculate available jars by excluding those already used in batches
+  // 2. Load Jars for the Wizard
+  const [allJars, setAllJars] = useState<MilkJar[]>(() => {
+    try {
+      const saved = localStorage.getItem('app_jars');
+      return saved ? JSON.parse(saved) : INITIAL_JARS_FALLBACK;
+    } catch (e) {
+      console.error("Error loading jars in Batches", e);
+      return INITIAL_JARS_FALLBACK;
+    }
+  });
+
+  // Compute Available Jars
   const availableJars = useMemo(() => {
-    // Collect all jar IDs that are currently part of a batch
     const usedJarIds = new Set(batches.flatMap(b => b.jarIds));
-    // Filter the source list to show only those NOT in the used set
-    return MOCK_APPROVED_JARS.filter(jar => !usedJarIds.has(jar.id));
+    return allJars.filter(jar => {
+      const isUsed = usedJarIds.has(jar.id);
+      const isStatusValid = [MilkStatus.RAW, MilkStatus.VERIFIED, MilkStatus.ANALYZED].includes(jar.status);
+      return !isUsed && isStatusValid;
+    });
+  }, [batches, allJars]);
+
+  // Persist Batches whenever they change
+  useEffect(() => {
+    localStorage.setItem('app_batches', JSON.stringify(batches));
   }, [batches]);
 
   const handleCreateBatch = (newBatch: MilkBatch) => {
     setBatches([newBatch, ...batches]);
+    // Also update jars status in localStorage to "IN_BATCH" if needed, 
+    // but for now relying on availableJars logic is safer.
     setView('LIST');
   };
 
@@ -90,6 +94,7 @@ const Batches: React.FC = () => {
 
   const getStatusColor = (status: MilkStatus) => {
     switch (status) {
+      case MilkStatus.RAW: return 'bg-blue-100 text-blue-700 border-blue-200';
       case MilkStatus.QUARANTINE: return 'bg-amber-100 text-amber-700 border-amber-200';
       case MilkStatus.RELEASED: return 'bg-emerald-100 text-emerald-700 border-emerald-200';
       case MilkStatus.DISCARDED: return 'bg-red-100 text-red-700 border-red-200';
@@ -184,6 +189,7 @@ const Batches: React.FC = () => {
                   </td>
                   <td className="px-6 py-4">
                      <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold border ${getStatusColor(batch.status)}`}>
+                        {batch.status === MilkStatus.RAW && <FlaskConical size={10} />}
                         {batch.status === MilkStatus.QUARANTINE && <FlaskConical size={10} />}
                         {batch.status === MilkStatus.RELEASED && <CheckCircle2 size={10} />}
                         {batch.status === MilkStatus.DISCARDED && <AlertCircle size={10} />}

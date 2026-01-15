@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Save, X, AlertTriangle, FileCheck, Calculator, Calendar, Activity, ClipboardList, Plus, Trash2, Pill, TestTube } from 'lucide-react';
+import { Save, X, AlertTriangle, FileCheck, Calculator, Calendar, Activity, ClipboardList, Plus, Trash2, Pill, TestTube, CheckCircle2, XCircle, ShieldCheck } from 'lucide-react';
 import { Donor, DonorType, DonorStatus, LabResult, Medication } from '../types';
 import { HOSPITAL_CATALOG } from '../constants/catalogs';
 
@@ -113,6 +113,26 @@ const DonorForm: React.FC<DonorFormProps> = ({ initialData, onSubmit, onCancel, 
     }
   };
 
+  const handleBlur = (field: string) => {
+    if (field === 'curp') {
+       const val = formData.curp || '';
+       const curpRegex = /^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z\d]\d$/;
+       
+       if (val && val.length !== 18) {
+          setErrors(prev => ({...prev, curp: 'Debe tener exactamente 18 caracteres'}));
+       } else if (val && !curpRegex.test(val)) {
+          setErrors(prev => ({...prev, curp: 'Formato de CURP inválido'}));
+       }
+    }
+    
+    if (field === 'contactPhone') {
+       const val = formData.contactPhone?.replace(/\D/g, '') || '';
+       if (val && val.length !== 10) {
+          setErrors(prev => ({...prev, contactPhone: 'Debe tener 10 dígitos numéricos'}));
+       }
+    }
+  };
+
   const handleNestedChange = (parent: 'risks' | 'habits' | 'gynObs' | 'staff', field: string, value: any) => {
     setFormData(prev => ({
       ...prev,
@@ -185,6 +205,19 @@ const DonorForm: React.FC<DonorFormProps> = ({ initialData, onSubmit, onCancel, 
     setFormData(prev => ({ ...prev, labResults: newLabs }));
   };
 
+  // --- ELIGIBILITY CRITERIA CHECKER ---
+  const checkEligibility = () => {
+    const checks = {
+      serologyNegative: !formData.labResults?.some(l => l.category === 'SEROLOGY' && l.isReactive),
+      consentSigned: !!formData.consentSigned,
+      toxicHabitsNegative: !formData.habits?.drugs && !formData.habits?.tobacco && !formData.habits?.alcohol,
+      // Add more strict rules here if needed
+    };
+    
+    const isEligible = Object.values(checks).every(Boolean);
+    return { checks, isEligible };
+  };
+
   const validate = () => {
     const newErrors: Record<string, string> = {};
     if (!formData.fullName) newErrors.fullName = 'El nombre es obligatorio';
@@ -236,6 +269,7 @@ const DonorForm: React.FC<DonorFormProps> = ({ initialData, onSubmit, onCancel, 
     !['Parto Eutócico', 'Cesárea', 'Parto Instrumentado'].includes(formData.obstetricEventType);
 
   const hasAnyReactive = formData.labResults?.some(l => l.isReactive);
+  const eligibility = checkEligibility();
 
   return (
     <div className="bg-white rounded-xl shadow-lg border border-slate-200 flex flex-col h-[calc(100vh-140px)]">
@@ -284,6 +318,7 @@ const DonorForm: React.FC<DonorFormProps> = ({ initialData, onSubmit, onCancel, 
       <div className="flex-1 overflow-y-auto p-6 bg-slate-50/50">
         <form id="donor-form" onSubmit={handleSubmit} className="max-w-5xl mx-auto space-y-8">
           
+          {/* ... (Sections 1-4 remain unchanged for brevity, focusing on Section 5 updates) ... */}
           {/* --- SECTION 1: IDENTIFICATION --- */}
           <div className={activeSection === 1 ? 'block space-y-6' : 'hidden'}>
             <div className="bg-white p-6 rounded-lg border border-slate-200 shadow-sm animate-in fade-in">
@@ -320,10 +355,11 @@ const DonorForm: React.FC<DonorFormProps> = ({ initialData, onSubmit, onCancel, 
                     maxLength={18}
                     value={formData.curp || ''}
                     onChange={(e) => handleChange('curp', e.target.value.toUpperCase())}
+                    onBlur={() => handleBlur('curp')}
                     className={`w-full p-2 border rounded-lg uppercase ${errors.curp ? 'border-red-500 bg-red-50' : 'border-slate-300'}`}
                     placeholder="18 caracteres alfanuméricos"
                   />
-                  {errors.curp && <span className="text-xs text-red-600 font-medium mt-1">{errors.curp}</span>}
+                  {errors.curp && <span className="text-xs text-red-600 font-medium mt-1 block">{errors.curp}</span>}
                 </div>
 
                 <div className="flex gap-4">
@@ -348,10 +384,11 @@ const DonorForm: React.FC<DonorFormProps> = ({ initialData, onSubmit, onCancel, 
                     type="tel" 
                     value={formData.contactPhone || ''}
                     onChange={(e) => handleChange('contactPhone', e.target.value)}
+                    onBlur={() => handleBlur('contactPhone')}
                     className={`w-full p-2 border rounded-lg ${errors.contactPhone ? 'border-red-500 bg-red-50' : 'border-slate-300'}`}
                     placeholder="10 dígitos"
                   />
-                  {errors.contactPhone && <span className="text-xs text-red-600 font-medium mt-1">{errors.contactPhone}</span>}
+                  {errors.contactPhone && <span className="text-xs text-red-600 font-medium mt-1 block">{errors.contactPhone}</span>}
                 </div>
 
                 {/* NUEVO CAMPO: GRUPO SANGUÍNEO */}
@@ -910,6 +947,56 @@ const DonorForm: React.FC<DonorFormProps> = ({ initialData, onSubmit, onCancel, 
             <div className="bg-white p-6 rounded-lg border border-slate-200 shadow-sm animate-in fade-in">
                <h3 className="text-lg font-semibold text-slate-800 mb-4 border-b pb-2">5. Entrevista y Validación</h3>
                
+               {/* --- CRITERIOS DE APTITUD VISUAL --- */}
+               <div className="mb-6 p-4 rounded-xl border bg-slate-50 border-slate-200">
+                 <h4 className="text-sm font-bold text-slate-700 uppercase mb-3 flex items-center gap-2">
+                   <ShieldCheck size={16} className="text-blue-600"/> Criterios de Aptitud (Validación Automática)
+                 </h4>
+                 
+                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {/* Criterio 1: Serología */}
+                    <div className={`p-3 rounded-lg border flex items-center gap-3 ${eligibility.checks.serologyNegative ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'}`}>
+                       {eligibility.checks.serologyNegative ? <CheckCircle2 className="text-emerald-600" size={20}/> : <XCircle className="text-red-600" size={20}/>}
+                       <div>
+                         <p className={`text-xs font-bold uppercase ${eligibility.checks.serologyNegative ? 'text-emerald-800' : 'text-red-800'}`}>Serología Negativa</p>
+                         <p className="text-[10px] text-slate-500">VIH, VDRL, HepB, HepC No Reactivos</p>
+                       </div>
+                    </div>
+
+                    {/* Criterio 2: Consentimiento */}
+                    <div className={`p-3 rounded-lg border flex items-center gap-3 ${eligibility.checks.consentSigned ? 'bg-emerald-50 border-emerald-100' : 'bg-amber-50 border-amber-100'}`}>
+                       {eligibility.checks.consentSigned ? <CheckCircle2 className="text-emerald-600" size={20}/> : <AlertTriangle className="text-amber-600" size={20}/>}
+                       <div>
+                         <p className={`text-xs font-bold uppercase ${eligibility.checks.consentSigned ? 'text-emerald-800' : 'text-amber-800'}`}>Consentimiento</p>
+                         <p className="text-[10px] text-slate-500">Documento firmado digitalmente</p>
+                       </div>
+                    </div>
+
+                    {/* Criterio 3: Hábitos Tóxicos */}
+                    <div className={`p-3 rounded-lg border flex items-center gap-3 ${eligibility.checks.toxicHabitsNegative ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'}`}>
+                       {eligibility.checks.toxicHabitsNegative ? <CheckCircle2 className="text-emerald-600" size={20}/> : <XCircle className="text-red-600" size={20}/>}
+                       <div>
+                         <p className={`text-xs font-bold uppercase ${eligibility.checks.toxicHabitsNegative ? 'text-emerald-800' : 'text-red-800'}`}>Sin Hábitos Tóxicos</p>
+                         <p className="text-[10px] text-slate-500">Alcohol, Tabaco, Drogas</p>
+                       </div>
+                    </div>
+                 </div>
+
+                 {/* Resumen de Recomendación */}
+                 <div className="mt-4 pt-3 border-t border-slate-200">
+                    <p className="text-xs text-slate-500 mb-1">Dictamen Sugerido por el Sistema:</p>
+                    {eligibility.isEligible ? (
+                      <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-100 text-emerald-800 text-sm font-bold rounded-lg border border-emerald-200">
+                        <CheckCircle2 size={16}/> CANDIDATA APTA
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-red-100 text-red-800 text-sm font-bold rounded-lg border border-red-200">
+                        <XCircle size={16}/> CANDIDATA NO APTA
+                      </span>
+                    )}
+                 </div>
+               </div>
+
                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                  
                  {/* Donation Type */}
@@ -943,13 +1030,33 @@ const DonorForm: React.FC<DonorFormProps> = ({ initialData, onSubmit, onCancel, 
                    )}
                  </div>
 
-                 <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 md:col-span-2">
-                    <h4 className="text-sm font-bold text-slate-700 mb-2">Dictamen Final</h4>
-                    <select value={formData.status} onChange={(e) => handleChange('status', e.target.value)} className="w-full p-2 border border-slate-300 rounded-lg font-bold">
+                 <div className={`p-4 rounded-lg border md:col-span-2 ${
+                   formData.status === DonorStatus.ACTIVE ? 'bg-emerald-50 border-emerald-200' :
+                   formData.status === DonorStatus.REJECTED ? 'bg-red-50 border-red-200' :
+                   'bg-slate-50 border-slate-200'
+                 }`}>
+                    <h4 className="text-sm font-bold text-slate-700 mb-2">Dictamen Final (Manual)</h4>
+                    <select 
+                      value={formData.status} 
+                      onChange={(e) => handleChange('status', e.target.value)} 
+                      className={`w-full p-2 border rounded-lg font-bold outline-none focus:ring-2 ${
+                        formData.status === DonorStatus.ACTIVE ? 'border-emerald-300 text-emerald-800 focus:ring-emerald-200' :
+                        formData.status === DonorStatus.REJECTED ? 'border-red-300 text-red-800 focus:ring-red-200' :
+                        'border-slate-300 text-slate-700'
+                      }`}
+                    >
                        {Object.values(DonorStatus).map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
+                    
+                    {/* Alerta si el dictamen manual contradice al sistema */}
+                    {formData.status === DonorStatus.ACTIVE && !eligibility.isEligible && (
+                      <p className="text-xs text-red-600 font-bold mt-2 flex items-center gap-1">
+                        <AlertTriangle size={12}/> Advertencia: Está activando una donadora que no cumple con todos los criterios automáticos.
+                      </p>
+                    )}
+
                     {formData.status === DonorStatus.REJECTED && (
-                      <textarea placeholder="Motivo de No Aceptación (Requerido)" value={formData.rejectionReason || ''} onChange={(e) => handleChange('rejectionReason', e.target.value)} className="w-full p-2 border border-red-300 rounded-lg mt-2 bg-white" rows={2}/>
+                      <textarea placeholder="Motivo de No Aceptación (Requerido)" value={formData.rejectionReason || ''} onChange={(e) => handleChange('rejectionReason', e.target.value)} className="w-full p-2 border border-red-300 rounded-lg mt-2 bg-white text-sm" rows={2}/>
                     )}
                  </div>
 

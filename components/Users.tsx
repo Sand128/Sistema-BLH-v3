@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { Plus, Search, Filter, Shield, User, List, Edit, Trash2, Key, Users as UsersIcon } from 'lucide-react';
+import { Plus, Search, Filter, Shield, User, List, Edit, Trash2, Key, Users as UsersIcon, Eye } from 'lucide-react';
 import { User as UserType, Role } from '../types';
 import UserForm from './UserForm';
 import RoleEditor from './RoleEditor';
 import AuditLog from './AuditLog';
+import UserProfile from './UserProfile';
 
 // Mock Data
 const MOCK_ROLES: Role[] = [
@@ -13,9 +14,9 @@ const MOCK_ROLES: Role[] = [
 ];
 
 const MOCK_USERS: UserType[] = [
-  { id: '1', fullName: 'Ana López', email: 'ana.lopez@hospital.mx', hospitalId: '5', hospitalName: 'Mónica Pretelini', roles: ['nurse'], status: 'ACTIVE', twoFactorEnabled: true, employeeId: 'ENF-001' },
-  { id: '2', fullName: 'Carlos Ruiz', email: 'carlos.ruiz@hospital.mx', hospitalId: '5', hospitalName: 'Mónica Pretelini', roles: ['lab'], status: 'ACTIVE', twoFactorEnabled: false, employeeId: 'QUI-001' },
-  { id: '3', fullName: 'Admin Sistema', email: 'admin@salud.edomex.gob.mx', hospitalId: '0', hospitalName: 'ISEM Central', roles: ['admin'], status: 'ACTIVE', twoFactorEnabled: true, employeeId: 'ADM-001' },
+  { id: '1', fullName: 'Ana López', email: 'ana.lopez@hospital.mx', hospitalId: '5', hospitalName: 'Mónica Pretelini', roles: ['nurse'], status: 'ACTIVE', twoFactorEnabled: true, employeeId: 'ENF-001', lastLogin: '2024-05-28T08:30:00' },
+  { id: '2', fullName: 'Carlos Ruiz', email: 'carlos.ruiz@hospital.mx', hospitalId: '5', hospitalName: 'Mónica Pretelini', roles: ['lab'], status: 'ACTIVE', twoFactorEnabled: false, employeeId: 'QUI-001', lastLogin: '2024-05-27T16:45:00' },
+  { id: '3', fullName: 'Admin Sistema', email: 'admin@salud.edomex.gob.mx', hospitalId: '0', hospitalName: 'ISEM Central', roles: ['admin'], status: 'ACTIVE', twoFactorEnabled: true, employeeId: 'ADM-001', lastLogin: '2024-05-28T10:15:00' },
 ];
 
 type ViewState = 'USERS' | 'ROLES' | 'AUDIT';
@@ -25,9 +26,10 @@ const Users: React.FC = () => {
   const [users, setUsers] = useState<UserType[]>(MOCK_USERS);
   const [roles, setRoles] = useState<Role[]>(MOCK_ROLES);
   
-  // Modals
+  // Modals & Sub-views
   const [showUserForm, setShowUserForm] = useState(false);
   const [editingUser, setEditingUser] = useState<UserType | undefined>(undefined);
+  const [viewProfileUser, setViewProfileUser] = useState<UserType | null>(null);
   
   const [showRoleEditor, setShowRoleEditor] = useState(false);
   const [editingRole, setEditingRole] = useState<Role | undefined>(undefined);
@@ -71,6 +73,21 @@ const Users: React.FC = () => {
     u.fullName.toLowerCase().includes(searchTerm.toLowerCase()) || 
     u.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // --- SUB-VIEW: PROFILE ---
+  if (viewProfileUser) {
+    return (
+      <UserProfile 
+        user={viewProfileUser} 
+        onBack={() => setViewProfileUser(null)} 
+        onEdit={() => { 
+          setEditingUser(viewProfileUser); 
+          setViewProfileUser(null);
+          setShowUserForm(true); 
+        }} 
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -178,6 +195,13 @@ const Users: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex justify-end gap-2">
+                        <button 
+                          onClick={() => setViewProfileUser(user)} 
+                          className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg"
+                          title="Ver perfil"
+                        >
+                          <Eye size={18}/>
+                        </button>
                         <button onClick={() => { setEditingUser(user); setShowUserForm(true); }} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg">
                           <Edit size={18}/>
                         </button>

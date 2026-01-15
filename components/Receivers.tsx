@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Search, Filter, Baby, Activity, Utensils, AlertCircle, History } from 'lucide-react';
+import { Plus, Search, Filter, Baby, Activity, Utensils, AlertCircle, History, ArrowLeft, Droplet, Clock, User, FileText, AlertTriangle } from 'lucide-react';
 import { Receiver, AdministrationRecord } from '../types';
 import ReceiverForm from './ReceiverForm';
 import AdministrationWizard from './AdministrationWizard';
@@ -28,13 +28,37 @@ const MOCK_RECEIVERS: Receiver[] = [
   }
 ];
 
-type ViewState = 'LIST' | 'CREATE' | 'ADMINISTER';
+// Mock Administration History
+const MOCK_ADMINISTRATION_LOGS: AdministrationRecord[] = [
+  {
+    id: 'ADM-101', receiverId: '1', receiverName: 'B. López García', batchId: 'B1', batchFolio: 'LP-2024-05-20-001',
+    volumePrescribed: 15, volumeAdministered: 15, volumeDiscarded: 0, 
+    timestamp: '2024-05-28T08:00:00', responsible: 'Enf. María S.', temperature: 16, via: 'Sonda Nasogástrica'
+  },
+  {
+    id: 'ADM-102', receiverId: '1', receiverName: 'B. López García', batchId: 'B1', batchFolio: 'LP-2024-05-20-001',
+    volumePrescribed: 15, volumeAdministered: 10, volumeDiscarded: 5, discardReason: 'Regurgitación parcial',
+    timestamp: '2024-05-28T11:00:00', responsible: 'Enf. María S.', temperature: 16.5, via: 'Sonda Nasogástrica'
+  },
+  {
+    id: 'ADM-201', receiverId: '2', receiverName: 'A. Pérez Martínez', batchId: 'B2', batchFolio: 'LP-2024-05-21-002',
+    volumePrescribed: 10, volumeAdministered: 10, volumeDiscarded: 0,
+    timestamp: '2024-05-28T09:30:00', responsible: 'Enf. Juana R.', temperature: 16, via: 'Sonda Orogástrica'
+  }
+];
+
+type ViewState = 'LIST' | 'CREATE' | 'ADMINISTER' | 'HISTORY';
 
 const Receivers: React.FC = () => {
   const [view, setView] = useState<ViewState>('LIST');
   const [receivers, setReceivers] = useState<Receiver[]>(MOCK_RECEIVERS);
   const [selectedReceiver, setSelectedReceiver] = useState<Receiver | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+
+  // Derived state for history
+  const historyLogs = selectedReceiver 
+    ? MOCK_ADMINISTRATION_LOGS.filter(log => log.receiverId === selectedReceiver.id).sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+    : [];
 
   const handleCreateReceiver = (newReceiver: Receiver) => {
     setReceivers([newReceiver, ...receivers]);
@@ -46,7 +70,14 @@ const Receivers: React.FC = () => {
     setView('ADMINISTER');
   };
 
+  const handleViewHistory = (receiver: Receiver) => {
+    setSelectedReceiver(receiver);
+    setView('HISTORY');
+  };
+
   const handleAdministrationComplete = (record: AdministrationRecord) => {
+    // In a real app, we would add this record to the history list/backend
+    MOCK_ADMINISTRATION_LOGS.push(record); 
     alert(`Administración registrada con folio ${record.id}`);
     setView('LIST');
     setSelectedReceiver(null);
@@ -66,7 +97,8 @@ const Receivers: React.FC = () => {
     r.expediente.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // RENDER LOGIC
+  // --- RENDER VIEWS ---
+
   if (view === 'CREATE') {
     return <ReceiverForm onSubmit={handleCreateReceiver} onCancel={() => setView('LIST')} />;
   }
@@ -81,6 +113,106 @@ const Receivers: React.FC = () => {
     );
   }
 
+  if (view === 'HISTORY' && selectedReceiver) {
+    return (
+      <div className="bg-white rounded-xl shadow-lg border border-slate-200 flex flex-col h-[calc(100vh-140px)] animate-in fade-in slide-in-from-right-4">
+        {/* History Header */}
+        <div className="px-6 py-4 border-b border-slate-200 bg-slate-50 rounded-t-xl flex items-center gap-4">
+          <button onClick={() => setView('LIST')} className="p-2 hover:bg-slate-200 rounded-lg text-slate-500 transition-colors">
+            <ArrowLeft size={20}/>
+          </button>
+          <div className="flex-1">
+            <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+              <History size={20} className="text-blue-500"/> Historial de Alimentación
+            </h2>
+            <div className="flex gap-4 mt-1 text-sm text-slate-600">
+              <span className="font-bold">{selectedReceiver.fullName}</span>
+              <span className="font-mono bg-white px-2 rounded border border-slate-200 text-xs flex items-center">{selectedReceiver.expediente}</span>
+              <span className="text-slate-400">|</span>
+              <span>{selectedReceiver.weightKg} kg</span>
+            </div>
+          </div>
+          <button 
+            onClick={() => setView('ADMINISTER')}
+            className="px-4 py-2 bg-pink-600 hover:bg-pink-700 text-white rounded-lg font-bold text-sm flex items-center gap-2 shadow-sm"
+          >
+            <Utensils size={16}/> Nueva Toma
+          </button>
+        </div>
+
+        {/* History Table */}
+        <div className="flex-1 overflow-y-auto p-6 bg-slate-50/30">
+          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+            <table className="w-full text-left">
+              <thead className="bg-slate-100 text-slate-600 font-semibold text-xs uppercase border-b border-slate-200">
+                <tr>
+                  <th className="px-6 py-3">Fecha / Hora</th>
+                  <th className="px-6 py-3">Detalles Lote</th>
+                  <th className="px-6 py-3 text-center">Volumen (mL)</th>
+                  <th className="px-6 py-3">Vía Admin</th>
+                  <th className="px-6 py-3">Responsable</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-sm">
+                {historyLogs.map((log) => (
+                  <tr key={log.id} className="hover:bg-slate-50">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2 font-medium text-slate-800">
+                        <Clock size={14} className="text-slate-400"/>
+                        {new Date(log.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                      </div>
+                      <div className="text-xs text-slate-500 mt-0.5 ml-6">
+                        {new Date(log.timestamp).toLocaleDateString()}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="font-mono text-xs font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded inline-block border border-blue-100 mb-1">
+                        {log.batchFolio}
+                      </div>
+                      <div className="text-xs text-slate-500 flex items-center gap-1">
+                        <Activity size={10}/> Temp: {log.temperature}°C
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <div className="inline-flex flex-col items-end">
+                        <span className="text-lg font-bold text-slate-700">{log.volumeAdministered}</span>
+                        <span className="text-[10px] text-slate-400">de {log.volumePrescribed} prescriptos</span>
+                      </div>
+                      {log.volumeDiscarded > 0 && (
+                        <div className="mt-1 text-xs text-red-600 flex items-center justify-center gap-1 bg-red-50 px-2 py-0.5 rounded border border-red-100" title={log.discardReason}>
+                          <AlertTriangle size={10}/> -{log.volumeDiscarded} (Merma)
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 text-xs border border-slate-200">
+                        <FileText size={12}/> {log.via}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2 text-slate-600">
+                        <User size={14} className="text-slate-400"/> {log.responsible}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {historyLogs.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="p-12 text-center text-slate-400">
+                      <History size={32} className="mx-auto mb-2 opacity-20"/>
+                      <p>No hay registros de administración para este paciente.</p>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // --- LIST VIEW ---
   return (
     <div className="space-y-6">
       {/* HEADER */}
@@ -173,7 +305,11 @@ const Receivers: React.FC = () => {
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button className="p-2 hover:bg-slate-100 text-slate-500 rounded-lg" title="Historial">
+                      <button 
+                        onClick={() => handleViewHistory(receiver)}
+                        className="p-2 hover:bg-slate-100 text-slate-500 rounded-lg hover:text-blue-600 transition-colors" 
+                        title="Ver Historial"
+                      >
                         <History size={18}/>
                       </button>
                       <button 

@@ -4,6 +4,7 @@ import {
   ArrowRight, CheckCircle2, AlertCircle, Snowflake, Box, AlertTriangle, Truck
 } from 'lucide-react';
 import { Donor, DonorStatus, MilkJar, MilkStatus, MilkType, DonorType } from '../types';
+import { useNotifications } from '../context/NotificationContext';
 
 // Mock active donors for search simulation
 const MOCK_ACTIVE_DONORS: Partial<Donor>[] = [
@@ -19,6 +20,7 @@ interface JarFormProps {
 }
 
 const JarForm: React.FC<JarFormProps> = ({ onSuccess, onCancel }) => {
+  const { addNotification } = useNotifications(); // Hook context
   const [step, setStep] = useState(1);
   const [selectedDonor, setSelectedDonor] = useState<Partial<Donor> | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -61,7 +63,11 @@ const JarForm: React.FC<JarFormProps> = ({ onSuccess, onCancel }) => {
   const validateColdChain = (): { valid: boolean, errors: string[] } => {
     const errors: string[] = [];
     
-    if (formData.volumeMl <= 0) errors.push("El volumen debe ser mayor a 0 mL.");
+    // Volume Validation: Must be between 10mL and 150mL
+    if (formData.volumeMl < 10 || formData.volumeMl > 150) {
+      errors.push("El volumen debe estar entre 10mL y 150mL por frasco.");
+    }
+    
     if (!formData.extractionTime) errors.push("Hora de extracción requerida.");
 
     // Integrity
@@ -127,7 +133,8 @@ const JarForm: React.FC<JarFormProps> = ({ onSuccess, onCancel }) => {
   const handleRegister = () => {
     const { valid, errors } = validateColdChain();
     if (!valid) {
-      alert("No se puede registrar: " + errors.join("\n"));
+      // Trigger error notification
+      addNotification("Error de Validación: " + errors[0], 'error');
       return;
     }
 
@@ -183,6 +190,9 @@ const JarForm: React.FC<JarFormProps> = ({ onSuccess, onCancel }) => {
       ]
     };
 
+    // Trigger Success Notification
+    addNotification(`Frasco ${folio} registrado correctamente`, 'success', 'jars');
+    
     onSuccess(newJar);
   };
 
@@ -279,8 +289,16 @@ const JarForm: React.FC<JarFormProps> = ({ onSuccess, onCancel }) => {
                          type="number" autoFocus
                          value={formData.volumeMl}
                          onChange={(e) => setFormData({...formData, volumeMl: parseFloat(e.target.value)})}
-                         className="w-full p-2.5 border border-slate-300 rounded-lg text-lg font-bold"
+                         className={`w-full p-2.5 border rounded-lg text-lg font-bold ${
+                           (formData.volumeMl < 10 || formData.volumeMl > 150) && formData.volumeMl !== 0
+                             ? 'border-red-300 bg-red-50 text-red-900 focus:ring-red-200'
+                             : 'border-slate-300 text-slate-900'
+                         }`}
+                         placeholder="10 - 150"
                        />
+                       {((formData.volumeMl < 10 || formData.volumeMl > 150) && formData.volumeMl !== 0) && (
+                         <span className="text-xs text-red-600 font-medium">Rango válido: 10 - 150 mL</span>
+                       )}
                      </div>
                      <div>
                        <label className="block text-xs font-bold text-slate-500 mb-1">Tipo de Leche</label>

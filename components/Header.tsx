@@ -1,31 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, User, Bell, Moon, Sun, X, Check, ArrowRight } from 'lucide-react';
+import { Menu, User, Bell, Moon, Sun, Check, ArrowRight, Trash2 } from 'lucide-react';
+import { useNotifications } from '../context/NotificationContext';
 
 interface HeaderProps {
   onMenuClick: () => void;
   onNavigate: (view: string) => void;
 }
 
-interface Notification {
-  id: number;
-  title: string;
-  time: string;
-  read: boolean;
-  targetView: string; // Module ID to navigate to
-}
-
-const MOCK_NOTIFICATIONS: Notification[] = [
-  { id: 1, title: 'Lote LP-2024-001 liberado', time: 'Hace 5 min', read: false, targetView: 'batches' },
-  { id: 2, title: 'Alerta de Temperatura: Congelador B', time: 'Hace 20 min', read: false, targetView: 'inventory' },
-  { id: 3, title: 'Nueva donadora registrada', time: 'Hace 1 hora', read: true, targetView: 'donors' },
-];
-
 const Header: React.FC<HeaderProps> = ({ onMenuClick, onNavigate }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
+  const { notifications, unreadCount, markAsRead, markAllAsRead, clearNotifications } = useNotifications();
   
   // -- Theme State --
   const [isDarkMode, setIsDarkMode] = useState(() => {
-    // Check local storage or system preference
     if (typeof window !== 'undefined') {
       return localStorage.getItem('theme') === 'dark' || 
         (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
@@ -33,19 +20,16 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, onNavigate }) => {
     return false;
   });
 
-  // -- Notifications State --
+  // -- Notifications UI State --
   const [showNotifications, setShowNotifications] = useState(false);
-  const [notifications, setNotifications] = useState<Notification[]>(MOCK_NOTIFICATIONS);
 
   // -- Effects --
   useEffect(() => {
-    // Clock Timer
     const timer = setInterval(() => setCurrentDate(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
   useEffect(() => {
-    // Theme Application
     const root = window.document.documentElement;
     if (isDarkMode) {
       root.classList.add('dark');
@@ -63,20 +47,38 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, onNavigate }) => {
     setShowNotifications(!showNotifications);
   };
 
-  const markAsRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-  };
-
-  const handleNotificationClick = (notif: Notification) => {
-    // 1. Mark as read locally
-    setNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, read: true } : n));
-    // 2. Close dropdown
+  const handleNotificationClick = (id: string, targetView?: string) => {
+    markAsRead(id);
     setShowNotifications(false);
-    // 3. Navigate to module
-    onNavigate(notif.targetView);
+    if (targetView) {
+      onNavigate(targetView);
+    }
   };
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  // Helper for "Time Ago"
+  const getTimeAgo = (date: Date) => {
+    const seconds = Math.floor((new Date().getTime() - new Date(date).getTime()) / 1000);
+    let interval = seconds / 31536000;
+    if (interval > 1) return `Hace ${Math.floor(interval)} años`;
+    interval = seconds / 2592000;
+    if (interval > 1) return `Hace ${Math.floor(interval)} meses`;
+    interval = seconds / 86400;
+    if (interval > 1) return `Hace ${Math.floor(interval)} días`;
+    interval = seconds / 3600;
+    if (interval > 1) return `Hace ${Math.floor(interval)} horas`;
+    interval = seconds / 60;
+    if (interval > 1) return `Hace ${Math.floor(interval)} min`;
+    return "Justo ahora";
+  };
+
+  const getNotifColor = (type: string) => {
+    switch (type) {
+      case 'success': return 'border-l-4 border-l-emerald-500 bg-emerald-50/50 dark:bg-emerald-900/10';
+      case 'warning': return 'border-l-4 border-l-amber-500 bg-amber-50/50 dark:bg-amber-900/10';
+      case 'error': return 'border-l-4 border-l-red-500 bg-red-50/50 dark:bg-red-900/10';
+      default: return 'border-l-4 border-l-blue-500 bg-blue-50/50 dark:bg-blue-900/10';
+    }
+  };
 
   // Format Date: "miércoles, 14 de enero de 2026"
   const dateStr = currentDate.toLocaleDateString('es-MX', {
@@ -159,33 +161,46 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, onNavigate }) => {
               <div className="absolute top-full mt-3 right-[-50px] md:right-0 w-80 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-100 dark:border-slate-700 overflow-hidden animate-in fade-in zoom-in-95 duration-200 z-50">
                 <div className="p-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
                   <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm">Notificaciones</h3>
-                  {unreadCount > 0 && (
-                    <button onClick={markAsRead} className="text-xs text-pink-600 hover:text-pink-700 font-medium flex items-center gap-1">
-                      <Check size={12} /> Marcar leídas
-                    </button>
-                  )}
+                  <div className="flex gap-2">
+                    {unreadCount > 0 && (
+                      <button onClick={markAllAsRead} className="text-[10px] text-blue-600 hover:text-blue-800 dark:text-blue-400 font-bold flex items-center gap-1 uppercase tracking-wide">
+                        <Check size={10} /> Marcar Leídas
+                      </button>
+                    )}
+                    {notifications.length > 0 && (
+                      <button onClick={clearNotifications} className="text-[10px] text-slate-400 hover:text-red-500 font-bold flex items-center gap-1 uppercase tracking-wide">
+                        <Trash2 size={10} />
+                      </button>
+                    )}
+                  </div>
                 </div>
-                <div className="max-h-[300px] overflow-y-auto">
+                
+                <div className="max-h-[350px] overflow-y-auto">
                   {notifications.length === 0 ? (
-                    <p className="p-4 text-center text-sm text-slate-500">No tienes notificaciones.</p>
+                    <div className="p-8 text-center text-slate-400">
+                      <Bell size={32} className="mx-auto mb-2 opacity-20"/>
+                      <p className="text-sm">Sin notificaciones.</p>
+                    </div>
                   ) : (
                     notifications.map(notif => (
                       <div 
                         key={notif.id} 
-                        onClick={() => handleNotificationClick(notif)}
-                        className={`p-4 border-b border-slate-50 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer group ${notif.read ? 'opacity-70' : 'bg-blue-50/30 dark:bg-blue-900/10'}`}
+                        onClick={() => handleNotificationClick(notif.id, notif.targetView)}
+                        className={`p-3 border-b border-slate-50 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer group ${getNotifColor(notif.type)} ${notif.read ? 'opacity-60' : 'opacity-100'}`}
                       >
-                        <div className="flex justify-between items-start mb-1">
-                          <p className={`text-sm ${!notif.read ? 'font-bold text-slate-800 dark:text-slate-200' : 'font-medium text-slate-600 dark:text-slate-400'}`}>
+                        <div className="flex justify-between items-start mb-1 gap-2">
+                          <p className={`text-sm leading-tight ${!notif.read ? 'font-bold text-slate-800 dark:text-slate-200' : 'font-medium text-slate-600 dark:text-slate-400'}`}>
                             {notif.title}
                           </p>
-                          {!notif.read && <span className="h-2 w-2 bg-pink-500 rounded-full mt-1.5 shrink-0"></span>}
+                          {!notif.read && <span className="h-2 w-2 bg-pink-500 rounded-full mt-1 shrink-0"></span>}
                         </div>
-                        <div className="flex justify-between items-end mt-1">
-                          <p className="text-[10px] text-slate-400 dark:text-slate-500">{notif.time}</p>
-                          <span className="text-[10px] text-blue-500 font-medium opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
-                            Ir al módulo <ArrowRight size={10} />
-                          </span>
+                        <div className="flex justify-between items-center mt-2">
+                          <p className="text-[10px] text-slate-400 dark:text-slate-500">{getTimeAgo(notif.timestamp)}</p>
+                          {notif.targetView && (
+                            <span className="text-[10px] text-blue-500 font-bold uppercase opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                              Ver <ArrowRight size={10} />
+                            </span>
+                          )}
                         </div>
                       </div>
                     ))
