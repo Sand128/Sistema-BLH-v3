@@ -41,7 +41,12 @@ const Jars: React.FC = () => {
   });
 
   const [selectedDonor, setSelectedDonor] = useState<Partial<Donor> | null>(null);
+  
+  // Search and Filter States
   const [searchTerm, setSearchTerm] = useState('');
+  const [filterActive, setFilterActive] = useState(false);
+  const [filterInternal, setFilterInternal] = useState(false);
+
   const [notification, setNotification] = useState<{type: 'success' | 'error', message: string} | null>(null);
 
   // Form State
@@ -60,11 +65,25 @@ const Jars: React.FC = () => {
 
   // Filter donors for right column
   const filteredDonors = useMemo(() => {
-    return MOCK_DONORS.filter(d => 
-      d.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      d.curp?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [searchTerm]);
+    return MOCK_DONORS.filter(d => {
+      // 1. Text Search (Name or CURP)
+      const searchLower = searchTerm.toLowerCase();
+      const matchesSearch = 
+        d.fullName?.toLowerCase().includes(searchLower) || 
+        d.curp?.toLowerCase().includes(searchLower);
+
+      // 2. Status Filter (Active Only)
+      const matchesActive = filterActive ? d.status === DonorStatus.ACTIVE : true;
+
+      // 3. Category Filter (Internals Only)
+      // Including 'Lactario Hospitalario' as internal since it happens on-site
+      const matchesInternal = filterInternal 
+        ? (d.donorCategory === 'Interna' || d.donorCategory === 'Lactario Hospitalario')
+        : true;
+
+      return matchesSearch && matchesActive && matchesInternal;
+    });
+  }, [searchTerm, filterActive, filterInternal]);
 
   // Today's summary data
   const todayStr = new Date().toISOString().split('T')[0];
@@ -131,8 +150,6 @@ const Jars: React.FC = () => {
     setJars(updatedJars);
     
     // Persist to local storage so DonorDetail sees consistency if refreshed/navigated
-    // Note: In this direction (Jars -> Jars), we don't strictly need LS for immediate view, 
-    // but good practice to keep them in sync for the other way around.
     const existingLs = JSON.parse(localStorage.getItem('app_jars') || '[]');
     localStorage.setItem('app_jars', JSON.stringify([newJar, ...existingLs]));
     
@@ -353,16 +370,30 @@ const Jars: React.FC = () => {
             <input 
               type="text" 
               placeholder="Buscar por nombre o CURP..." 
-              className="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500"
+              className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
           <div className="flex gap-2 mt-2">
-             <button className="text-xs flex items-center gap-1 bg-white border border-slate-200 px-2 py-1 rounded text-slate-600 hover:bg-slate-100">
+             <button 
+               onClick={() => setFilterActive(!filterActive)}
+               className={`text-xs flex items-center gap-1 border px-2 py-1 rounded transition-colors ${
+                 filterActive 
+                   ? 'bg-slate-800 text-white border-slate-800' 
+                   : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100'
+               }`}
+             >
                <Filter size={12}/> Activas
              </button>
-             <button className="text-xs flex items-center gap-1 bg-white border border-slate-200 px-2 py-1 rounded text-slate-600 hover:bg-slate-100">
+             <button 
+               onClick={() => setFilterInternal(!filterInternal)}
+               className={`text-xs flex items-center gap-1 border px-2 py-1 rounded transition-colors ${
+                 filterInternal 
+                   ? 'bg-slate-800 text-white border-slate-800' 
+                   : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100'
+               }`}
+             >
                <MapPin size={12}/> Internas
              </button>
           </div>

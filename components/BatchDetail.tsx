@@ -36,6 +36,9 @@ const BatchDetail: React.FC<BatchDetailProps> = ({ batch, onBack }) => {
     donor: batch.donors[index % batch.donors.length].name
   }));
 
+  // Permission check placeholder (Future implementation)
+  const canViewCertificate = false; 
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
       
@@ -57,9 +60,15 @@ const BatchDetail: React.FC<BatchDetailProps> = ({ batch, onBack }) => {
         </div>
         
         <div className="flex gap-3">
-           <button className="px-4 py-2 border border-slate-200 text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-50 flex items-center gap-2">
-             <FileText size={16}/> Certificado
-           </button>
+           {/* 
+             TODO: Reactivate 'Certificado' button when the module is ready or based on role permissions.
+             Use 'canViewCertificate' flag to toggle visibility.
+           */}
+           {canViewCertificate && (
+             <button className="px-4 py-2 border border-slate-200 text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-50 flex items-center gap-2">
+               <FileText size={16}/> Certificado
+             </button>
+           )}
         </div>
       </div>
 
