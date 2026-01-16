@@ -1,33 +1,47 @@
-import React, { useState } from 'react';
-import { User, Lock, Moon, Sun, Baby, HeartPulse } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { User, Lock, Moon, Sun, Baby, HeartPulse, Eye, EyeOff, Loader2, AlertCircle } from 'lucide-react';
+import { authService } from '../services/authService';
 
 interface LoginProps {
   onLoginSuccess: () => void;
 }
 
 const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
-  const [email, setEmail] = useState('');
+  // Estados del Formulario
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  
+  // Estados de UI/UX
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [isFormValid, setIsFormValid] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
+
+  // Validación en tiempo real
+  useEffect(() => {
+    // Regla: No vacío y formato email (o el usuario especial 'admin')
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const isValidUser = emailRegex.test(username) || username === 'admin';
+    const isValidPass = password.length > 0;
+    
+    setIsFormValid(isValidUser && isValidPass);
+    setError(''); // Limpiar errores al escribir
+  }, [username, password]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isFormValid) return;
+
     setIsLoading(true);
     setError('');
 
     try {
-      // Simulación de servicio de autenticación
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      if (email === 'admin@blh.com' && password === 'admin') {
-        onLoginSuccess();
-      } else {
-        throw new Error('Credenciales inválidas');
-      }
-    } catch (err) {
-      setError('Credenciales incorrectas. Intente: admin@blh.com / admin');
+      await authService.login(username, password);
+      // Notificar al componente padre (App.tsx) para cambiar la vista
+      onLoginSuccess();
+    } catch (err: any) {
+      setError(err.message || 'Error de conexión. Intente nuevamente.');
     } finally {
       setIsLoading(false);
     }
@@ -35,193 +49,182 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
 
   const toggleTheme = () => {
     setIsDarkMode(!isDarkMode);
-    if (!isDarkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  };
-
-  // Clases dinámicas según el tema
-  const themeClasses = {
-    container: isDarkMode 
-      ? 'bg-slate-900 text-slate-100' 
-      : 'bg-gradient-to-br from-pink-100 via-purple-100 to-blue-100 text-slate-800',
-    card: isDarkMode
-      ? 'bg-slate-800 border-slate-700 shadow-slate-900/50'
-      : 'bg-white/80 backdrop-blur-lg border-white shadow-xl shadow-pink-100/50',
-    inputBg: isDarkMode
-      ? 'bg-slate-900 border-slate-600 text-white placeholder-slate-500 focus:border-pink-500'
-      : 'bg-[#F2F4F7] border-[#C6C6C6] text-[#333333] placeholder-[#9A9A9A] focus:border-pink-500',
-    inputIcon: isDarkMode ? 'text-slate-500' : 'text-gray-400',
-    heading: isDarkMode ? 'text-pink-400' : 'text-pink-600',
-    subheading: isDarkMode ? 'text-slate-400' : 'text-slate-500',
-    logoText: isDarkMode ? 'text-slate-300' : 'text-slate-600',
-    button: 'bg-pink-600 hover:bg-pink-700 text-white shadow-lg shadow-pink-600/30 transition-all transform hover:scale-[1.02]',
+    document.documentElement.classList.toggle('dark');
   };
 
   return (
-    <div className={`min-h-screen flex w-full transition-colors duration-500 font-sans ${themeClasses.container}`}>
+    <div className={`min-h-screen w-full flex font-sans transition-colors duration-500 ${isDarkMode ? 'bg-slate-900' : 'bg-slate-50'}`}>
       
-      {/* Botón de cambio de tema (Flotante) */}
-      <button 
-        onClick={toggleTheme}
-        className={`absolute top-6 right-6 z-50 p-3 rounded-full shadow-lg transition-all ${
-          isDarkMode ? 'bg-slate-800 text-yellow-400 hover:bg-slate-700' : 'bg-white text-slate-600 hover:bg-gray-50'
-        }`}
-        aria-label="Alternar modo oscuro"
-      >
-        {isDarkMode ? <Sun className="h-6 w-6" /> : <Moon className="h-6 w-6" />}
-      </button>
-
-      {/* Lado Izquierdo: Formulario */}
-      <div className="w-full lg:w-5/12 flex flex-col justify-between px-8 sm:px-12 lg:px-16 xl:px-24 relative z-10 py-8 overflow-y-auto">
+      {/* --- COLUMNA IZQUIERDA: FORMULARIO (40%) --- */}
+      <div className="w-full lg:w-5/12 flex flex-col justify-center px-8 sm:px-12 lg:px-16 xl:px-24 relative z-10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-r border-white/20">
         
-        {/* Encabezado con Imagen Institucional */}
-        <div className="w-full mb-8">
-           {/* Fallback visual si la imagen no carga */}
-           <div className="relative">
-             <img 
-               src="encabezado isem.png" 
-               alt="Gobierno del Estado de México - Salud - ISEM" 
-               className="h-16 sm:h-20 object-contain mx-auto lg:mx-0 relative z-10"
-               onError={(e) => {
-                 e.currentTarget.style.display = 'none';
-                 e.currentTarget.nextElementSibling?.classList.remove('hidden');
-               }}
-             />
-             <div className="hidden h-16 sm:h-20 flex items-center gap-4">
-                <div className="h-12 w-12 bg-slate-200 rounded-full flex items-center justify-center text-[10px] font-bold text-slate-500 border-2 border-slate-300 border-dashed">ISEM</div>
-                <div>
-                   <h2 className="text-xs font-bold uppercase tracking-widest text-slate-500">Gobierno del Estado de México</h2>
-                   <h1 className="text-sm font-bold uppercase text-slate-700">Secretaría de Salud</h1>
-                </div>
+        {/* Toggle Theme (Absolute) */}
+        <button 
+          onClick={toggleTheme}
+          className="absolute top-6 right-6 p-2 rounded-full text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+        >
+          {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+        </button>
+
+        {/* Header Institucional */}
+        <div className="mb-10 animate-in fade-in slide-in-from-top-4 duration-700">
+          <div className="flex items-center gap-4 mb-6 opacity-80 grayscale hover:grayscale-0 transition-all duration-500">
+             {/* Placeholder para Logos - En producción usar <img> */}
+             <div className="flex flex-col">
+               <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Gobierno del Estado de México</span>
+               <h2 className="text-sm font-bold text-slate-700 dark:text-slate-300">Secretaría de Salud | ISEM</h2>
              </div>
-           </div>
+             <div className="h-8 w-[1px] bg-slate-300"></div>
+             <div className="text-xs text-pink-600 font-bold uppercase tracking-wide">
+               Coordinación de Lactancia
+             </div>
+          </div>
+
+          <div className="flex items-center gap-3 mb-2">
+             <div className="p-2 bg-pink-100 dark:bg-pink-900/30 rounded-xl text-pink-600 dark:text-pink-400">
+               <HeartPulse size={28} />
+             </div>
+             <h1 className="text-3xl font-bold text-slate-800 dark:text-white tracking-tight">Bienvenido</h1>
+          </div>
+          <p className="text-slate-500 dark:text-slate-400">
+            Ingrese sus credenciales para acceder al sistema de gestión.
+          </p>
         </div>
 
-        <div className="w-full max-w-md mx-auto">
-          {/* Encabezado del Formulario */}
-          <div className="mb-10">
-            <div className="flex items-center gap-3 mb-4">
-               <div className={`p-3 rounded-2xl ${isDarkMode ? 'bg-pink-900/30' : 'bg-pink-100'}`}>
-                 <HeartPulse className="h-8 w-8 text-pink-600" />
-               </div>
-               <h1 className={`text-3xl font-bold ${themeClasses.heading}`}>Bienvenido</h1>
+        {/* Formulario */}
+        <form onSubmit={handleSubmit} className="space-y-6 max-w-md w-full animate-in fade-in slide-in-from-bottom-4 duration-700 delay-100">
+          
+          {/* Alerta de Error */}
+          {error && (
+            <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800 rounded-xl flex items-start gap-3 text-red-600 dark:text-red-400 text-sm animate-in shake">
+              <AlertCircle size={18} className="mt-0.5 shrink-0" />
+              <span>{error}</span>
             </div>
-            <p className={`text-lg ${themeClasses.subheading}`}>
-              Sistema de Control de Lactancia Materna
-            </p>
+          )}
+
+          {/* Input Usuario */}
+          <div className="space-y-2 group">
+            <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">
+              Usuario / Correo
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-pink-500 transition-colors">
+                <User size={20} />
+              </div>
+              <input
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="admin"
+                className="block w-full pl-12 pr-4 py-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-pink-500/50 focus:border-pink-500 transition-all"
+              />
+            </div>
           </div>
 
-          {/* Tarjeta de Login */}
-          <div className={`p-8 rounded-3xl border ${themeClasses.card} transition-all duration-300`}>
-            <form className="space-y-6" onSubmit={handleSubmit}>
-              {error && (
-                <div className="p-4 rounded-xl bg-red-50 border border-red-100 flex items-center gap-3 animate-pulse">
-                  <div className="h-2 w-2 rounded-full bg-red-500"></div>
-                  <p className="text-sm text-red-600 font-medium">{error}</p>
-                </div>
-              )}
-              
-              {/* Campo Usuario */}
-              <div className="space-y-2">
-                <label className={`text-sm font-medium ml-1 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>
-                  Usuario
-                </label>
-                <div className="relative group">
-                  <div className={`absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none ${themeClasses.inputIcon}`}>
-                    <User className="h-5 w-5 transition-colors group-focus-within:text-pink-500" />
-                  </div>
-                  <input
-                    type="email"
-                    required
-                    className={`block w-full pl-11 pr-4 py-4 rounded-md border outline-none transition-all duration-300 text-base ${themeClasses.inputBg}`}
-                    placeholder="admin@blh.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                  />
-                </div>
+          {/* Input Password */}
+          <div className="space-y-2 group">
+            <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">
+              Contraseña
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-pink-500 transition-colors">
+                <Lock size={20} />
               </div>
-
-              {/* Campo Contraseña */}
-              <div className="space-y-2">
-                <label className={`text-sm font-medium ml-1 ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>
-                  Contraseña
-                </label>
-                <div className="relative group">
-                  <div className={`absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none ${themeClasses.inputIcon}`}>
-                    <Lock className="h-5 w-5 transition-colors group-focus-within:text-pink-500" />
-                  </div>
-                  <input
-                    type="password"
-                    required
-                    className={`block w-full pl-11 pr-4 py-4 rounded-md border outline-none transition-all duration-300 text-base ${themeClasses.inputBg}`}
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                  />
-                </div>
-              </div>
-
-              <div className="pt-2">
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className={`w-full py-4 rounded-md text-lg font-bold tracking-wide ${themeClasses.button} flex items-center justify-center gap-2`}
-                >
-                  {isLoading ? (
-                    <div className="h-6 w-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                  ) : (
-                    "Acceder al sistema"
-                  )}
-                </button>
-              </div>
-            </form>
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="block w-full pl-12 pr-12 py-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-pink-500/50 focus:border-pink-500 transition-all"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+              >
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
           </div>
-        </div>
 
-        {/* Pie de Página con Imagen */}
-        <div className="mt-8 w-full max-w-md mx-auto">
-             <p className={`text-center text-sm mb-4 ${themeClasses.subheading}`}>
-               © {new Date().getFullYear()} Banco de Leche Humana. Todos los derechos reservados.
-             </p>
-             <div className="relative">
-               <img 
-                 src="pie isem.png" 
-                 alt="Decoración Institucional" 
-                 className="w-full object-contain"
-                 onError={(e) => e.currentTarget.style.display = 'none'}
-               />
-             </div>
-        </div>
+          {/* Actions */}
+          <div className="flex items-center justify-between text-sm pt-2">
+            <label className="flex items-center gap-2 cursor-pointer text-slate-600 dark:text-slate-400">
+              <input type="checkbox" className="rounded border-slate-300 text-pink-600 focus:ring-pink-500" />
+              <span>Recordarme</span>
+            </label>
+            <a href="#" className="font-semibold text-pink-600 hover:text-pink-700 hover:underline">
+              ¿Olvidó su clave?
+            </a>
+          </div>
 
+          {/* Submit Button */}
+          <button
+            type="submit"
+            disabled={!isFormValid || isLoading}
+            className={`w-full py-4 rounded-xl text-white font-bold text-lg shadow-lg flex items-center justify-center gap-2 transition-all transform hover:scale-[1.02] active:scale-[0.98]
+              ${!isFormValid || isLoading 
+                ? 'bg-slate-300 dark:bg-slate-700 cursor-not-allowed text-slate-500 shadow-none' 
+                : 'bg-gradient-to-r from-pink-600 to-rose-500 hover:from-pink-500 hover:to-rose-400 shadow-pink-500/30'}
+            `}
+          >
+            {isLoading ? (
+              <>
+                <Loader2 size={24} className="animate-spin" />
+                <span>Accediendo...</span>
+              </>
+            ) : (
+              "Entrar al Sistema"
+            )}
+          </button>
+
+        </form>
+
+        {/* Footer */}
+        <div className="mt-12 text-center text-xs text-slate-400">
+          <p>© {new Date().getFullYear()} Coordinación Estatal de Lactancia Materna y Bancos de Leche</p>
+          <p className="mt-1">Versión 2.0.1 (Fase Demo)</p>
+        </div>
       </div>
 
-      {/* Lado Derecho: Imagen Ilustrativa */}
+      {/* --- COLUMNA DERECHA: VISUAL (60%) --- */}
       <div className="hidden lg:block w-7/12 relative overflow-hidden bg-slate-900">
-        {/* Imagen de fondo (Madre y bebé - concepto lactancia) */}
-        <img 
-          src="https://images.unsplash.com/photo-1555252333-9f8e92e65df9?q=80&w=2574&auto=format&fit=crop" 
-          alt="Madre amamantando a su bebé en un ambiente cálido y seguro" 
-          className="absolute inset-0 w-full h-full object-cover transition-transform duration-[20s] hover:scale-105 opacity-80"
-        />
         
-        {/* Gradiente Overlay para integrar con el diseño */}
-        <div className={`absolute inset-0 bg-gradient-to-r ${isDarkMode ? 'from-slate-900 via-slate-900/60 to-transparent' : 'from-pink-100 via-purple-100/40 to-transparent'} mix-blend-multiply`}></div>
-        <div className={`absolute inset-0 bg-gradient-to-t ${isDarkMode ? 'from-slate-900 via-transparent' : 'from-blue-100 via-transparent'} opacity-60`}></div>
+        {/* Background Image with Ken Burns Effect */}
+        <div className="absolute inset-0 z-0">
+          <img 
+            src="https://images.unsplash.com/photo-1555252333-9f8e92e65df9?q=80&w=2574&auto=format&fit=crop" 
+            alt="Lactancia Materna" 
+            className="w-full h-full object-cover opacity-60 animate-[scale-in_20s_infinite_alternate]"
+          />
+        </div>
 
-        {/* Mensaje inspirador flotante */}
-        <div className="absolute bottom-16 right-16 max-w-md text-right">
-           <div className={`inline-block p-6 rounded-3xl backdrop-blur-md border border-white/20 shadow-2xl ${isDarkMode ? 'bg-slate-900/40 text-white' : 'bg-white/30 text-white'}`}>
-              <Baby className="h-10 w-10 mb-4 ml-auto" />
-              <h3 className="text-2xl font-bold mb-2">Nutriendo el futuro</h3>
-              <p className="text-lg opacity-90 leading-relaxed">
-                "La lactancia materna es el primer paso hacia una vida saludable y llena de amor."
+        {/* Gradient Overlays */}
+        <div className="absolute inset-0 bg-gradient-to-br from-pink-900/40 via-purple-900/40 to-blue-900/40 mix-blend-overlay z-1"></div>
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent z-1"></div>
+
+        {/* Floating Glass Card (Quote) */}
+        <div className="absolute bottom-20 right-20 max-w-lg z-20 animate-in slide-in-from-right-10 duration-1000">
+           <div className="backdrop-blur-xl bg-white/10 border border-white/20 p-8 rounded-3xl shadow-2xl text-white">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-white/20 rounded-full">
+                  <Baby size={24} />
+                </div>
+                <h3 className="text-xl font-bold tracking-wide">Nutrición & Amor</h3>
+              </div>
+              <p className="text-xl font-light italic leading-relaxed opacity-90 mb-4">
+                "La lactancia materna es el vínculo de amor que vuelve sanos, fuertes y felices a nuestros niños."
               </p>
+              <div className="h-1 w-20 bg-pink-500 rounded-full"></div>
            </div>
         </div>
+
+        {/* Decorative Elements */}
+        <div className="absolute top-10 right-10 z-10 opacity-30">
+           <div className="w-64 h-64 bg-pink-500 rounded-full blur-[100px]"></div>
+        </div>
       </div>
+
     </div>
   );
 };
