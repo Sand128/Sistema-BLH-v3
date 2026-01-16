@@ -4,12 +4,15 @@ import {
   Download, Clock, CheckCircle, XCircle 
 } from 'lucide-react';
 import { consentimientoService } from '../../services/consentimientoService';
+import { DonorType } from '../../types';
 
 interface ConsentimientoStatusProps {
   donorId: string;
   donorName: string;
   isSigned: boolean; // Passed from parent Donor object
   consentDate?: string;
+  donorFolio: string;
+  donorType: DonorType;
   onDownloadPdf?: () => void;
 }
 
@@ -18,6 +21,8 @@ export const ConsentimientoStatus: React.FC<ConsentimientoStatusProps> = ({
   donorName,
   isSigned,
   consentDate,
+  donorFolio,
+  donorType,
   onDownloadPdf
 }) => {
   const [loading, setLoading] = useState(false);
@@ -39,21 +44,42 @@ export const ConsentimientoStatus: React.FC<ConsentimientoStatusProps> = ({
       onDownloadPdf();
       return;
     }
+
+    // Condición: Solo para donadoras HETERÓLOGAS (Heteróloga)
+    if (donorType !== DonorType.HETEROLOGOUS) {
+      alert('El documento PDF de Consentimiento Informado para Donación Externa solo se genera para donadoras clasificadas como HETERÓLOGAS.');
+      return;
+    }
     
     setLoading(true);
     try {
-      const pdfBlob = await consentimientoService.generarPdfConsentimiento(donorId);
+      // 1. Generar Blob con el texto oficial
+      const pdfBlob = await consentimientoService.generarPdfConsentimiento(
+        donorName, 
+        fechaFirma.toLocaleDateString('es-MX'), 
+        'Hospital Materno Perinatal "Mónica Pretelini Sáenz"' // Mock Unit Name or pass as prop
+      );
+      
+      // 2. Crear URL temporal
       const url = window.URL.createObjectURL(pdfBlob);
+      
+      // 3. Forzar descarga con nombre específico
+      // Convención: Consentimiento_[FOLIO]_[NombreCompletoDonadora].pdf
+      const safeName = donorName.replace(/\s+/g, '_');
+      const filename = `Consentimiento_${donorFolio}_${safeName}.pdf`;
+      
       const a = document.createElement('a');
       a.href = url;
-      a.download = `Consentimiento_${donorName.replace(/\s+/g, '_')}.pdf`;
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
+      
+      // 4. Limpieza
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
     } catch (err) {
       console.error(err);
-      alert('Error al descargar el consentimiento');
+      alert('Error al generar el documento de consentimiento');
     } finally {
       setLoading(false);
     }
@@ -142,7 +168,12 @@ export const ConsentimientoStatus: React.FC<ConsentimientoStatusProps> = ({
           <button
             onClick={handleDescargar}
             disabled={loading}
-            className="flex items-center gap-1 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-50 hover:text-blue-600 transition-colors"
+            className={`flex items-center gap-1 px-3 py-1.5 bg-white border rounded-lg text-xs font-medium transition-colors ${
+              donorType === DonorType.HETEROLOGOUS 
+                ? 'border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-blue-600'
+                : 'border-slate-100 text-slate-300 cursor-not-allowed'
+            }`}
+            title={donorType !== DonorType.HETEROLOGOUS ? "Solo disponible para donadoras Heterólogas" : "Descargar PDF"}
           >
             {loading ? <Clock className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
             PDF

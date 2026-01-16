@@ -307,7 +307,14 @@ const DonorDetail: React.FC<DonorDetailProps> = ({ donor, onBack, onEdit }) => {
               {/* TAB: GENERAL */}
               {activeTab === 'general' && (
                 <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
-                  <ConsentimientoStatus donorId={donor.id} donorName={donor.fullName} isSigned={localConsentSigned} consentDate={donor.consentDate}/>
+                  <ConsentimientoStatus 
+                    donorId={donor.id} 
+                    donorName={donor.fullName} 
+                    isSigned={localConsentSigned} 
+                    consentDate={donor.consentDate}
+                    donorFolio={donor.folio}
+                    donorType={donor.type}
+                  />
                   
                   <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-8">
                     <h3 className="text-lg font-bold text-slate-800 mb-6 pb-4 border-b border-slate-100 flex items-center gap-2">
