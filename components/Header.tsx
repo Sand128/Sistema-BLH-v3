@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, User, Bell, Moon, Sun, Check, ArrowRight, Trash2 } from 'lucide-react';
+import { Menu, User, Bell, Moon, Sun, Check, ArrowRight, Trash2, LogOut } from 'lucide-react';
 import { useNotifications } from '../context/NotificationContext';
 
 interface HeaderProps {
   onMenuClick: () => void;
   onNavigate: (view: string) => void;
+  onLogout: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ onMenuClick, onNavigate }) => {
+const Header: React.FC<HeaderProps> = ({ onMenuClick, onNavigate, onLogout }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const { notifications, unreadCount, markAsRead, markAllAsRead, clearNotifications } = useNotifications();
   
@@ -123,7 +124,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, onNavigate }) => {
           </div>
         </div>
 
-        {/* --- RIGHT SECTION: Date, Theme, Notifs, User --- */}
+        {/* --- RIGHT SECTION: Date, Theme, Notifs, Logout, User --- */}
         <div className="flex items-center gap-3 md:gap-6">
           
           {/* 1. Date & Time (Hidden on small mobile) */}
@@ -210,7 +211,17 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, onNavigate }) => {
             )}
           </div>
 
-          {/* 4. User Section */}
+          {/* 4. Logout (New) */}
+          <button 
+            onClick={onLogout}
+            className="flex items-center gap-2 px-2 py-1.5 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition-colors"
+            title="Cerrar sesión"
+          >
+            <LogOut size={20} />
+            <span className="hidden xl:inline text-sm font-bold">Cerrar sesión</span>
+          </button>
+
+          {/* 5. User Section */}
           <div className="flex items-center gap-3 pl-4 border-l border-slate-200 dark:border-slate-700">
             <div className="text-right hidden sm:block">
               <p className="text-sm font-bold text-slate-800 dark:text-slate-200 leading-tight">Administrador</p>

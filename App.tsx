@@ -92,6 +92,7 @@ const App: React.FC = () => {
           <Header 
             onMenuClick={() => setIsSidebarOpen(true)} 
             onNavigate={setCurrentView}
+            onLogout={handleLogout}
           />
 
           {/* Scrollable Content */}
