@@ -69,9 +69,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView, isOpen, 
   };
 
   const handleNavigation = (viewId: string) => {
-    // Mapping logic for legacy/special views
-    const targetView = viewId === 'auth' ? 'users' : viewId;
-    setCurrentView(targetView);
+    setCurrentView(viewId);
     if (window.innerWidth < 1024) setIsOpen(false);
   };
 
@@ -160,7 +158,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView, isOpen, 
                     onClick={() => handleNavigation(item.id)}
                     className={`
                       w-full flex items-center gap-4 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200
-                      ${currentView === item.id || (item.id === 'auth' && currentView === 'users_auth')
+                      ${currentView === item.id
                         ? 'bg-slate-100 text-slate-900' 
                         : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'}
                     `}

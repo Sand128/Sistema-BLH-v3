@@ -14,7 +14,22 @@ import Users from './components/Users';
 import AIAssistant from './components/AIAssistant';
 import WasteRegistry from './components/WasteRegistry'; 
 import Login from './components/Login';
+import SecuritySettings from './components/SecuritySettings';
 import { NotificationProvider } from './context/NotificationContext';
+import { User } from './types';
+
+// Mock Authenticated User (Simulation of Session Context)
+const MOCK_SESSION_USER: User = {
+  id: 'current-user-123',
+  fullName: 'Administrador del Sistema',
+  email: 'admin@blh.com',
+  hospitalId: '1',
+  hospitalName: 'Hospital General "Dr. Nicolás San Juan"',
+  roles: ['admin'],
+  status: 'ACTIVE',
+  twoFactorEnabled: true,
+  lastLogin: new Date().toISOString()
+};
 
 const App: React.FC = () => {
   // Auth State
@@ -54,10 +69,7 @@ const App: React.FC = () => {
       case 'reports': return <Reports />;
       case 'users': return <Users />;
       case 'assistant': return <AIAssistant />;
-      // Handle explicit auth/logout request from sidebar if needed
-      case 'auth': 
-        handleLogout();
-        return null;
+      case 'auth': return <SecuritySettings user={MOCK_SESSION_USER} />;
       default: return (
         <div className="flex flex-col items-center justify-center h-full text-slate-400 dark:text-slate-600">
           <div className="bg-slate-100 dark:bg-slate-800 p-8 rounded-full mb-4">
