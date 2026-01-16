@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { Donor, DonorStatus, MilkType, MilkJar, MilkStatus, DonorType } from '../types';
 import { ConsentimientoModal } from './consentimiento/ConsentimientoModal';
+import { ConsentimientoViewerModal } from './consentimiento/ConsentimientoViewerModal';
 import { ConsentimientoStatus } from './consentimiento/ConsentimientoStatus';
 import { HOSPITAL_CATALOG } from '../constants/catalogs';
 import { useNotifications } from '../context/NotificationContext';
@@ -23,6 +24,7 @@ const DonorDetail: React.FC<DonorDetailProps> = ({ donor, onBack, onEdit }) => {
   const [activeTab, setActiveTab] = useState<TabType>('general');
   const [showNewDonationForm, setShowNewDonationForm] = useState(false);
   const [showConsentModal, setShowConsentModal] = useState(false);
+  const [showConsentViewer, setShowConsentViewer] = useState(false);
   const [localConsentSigned, setLocalConsentSigned] = useState(donor.consentSigned);
 
   // Form State for New Donation
@@ -123,6 +125,15 @@ const DonorDetail: React.FC<DonorDetailProps> = ({ donor, onBack, onEdit }) => {
     return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
   };
 
+  const handleConsentClick = () => {
+    if (localConsentSigned) {
+      setShowConsentViewer(true);
+    } else {
+      // Regla de Negocio: Solo visualizar o informar ausencia. No permitir firmar desde aquí.
+      alert("La donadora heteróloga no cuenta con un consentimiento informado registrado.");
+    }
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-300 font-sans text-slate-800">
       
@@ -158,13 +169,14 @@ const DonorDetail: React.FC<DonorDetailProps> = ({ donor, onBack, onEdit }) => {
             <Edit size={16} /> Actualizar
           </button>
           
-          {localConsentSigned ? (
-             <button className="flex-1 md:flex-none px-4 py-2.5 border border-blue-100 text-blue-600 bg-blue-50 font-semibold text-sm rounded-xl hover:bg-blue-100 flex items-center justify-center gap-2 transition-colors">
+          {/* BOTÓN CONSENTIMIENTO: Solo visible para HETERÓLOGA */}
+          {donor.type === DonorType.HETEROLOGOUS && (
+             <button 
+               onClick={handleConsentClick}
+               className="flex-1 md:flex-none px-4 py-2.5 border border-blue-100 text-blue-600 bg-blue-50 font-semibold text-sm rounded-xl hover:bg-blue-100 flex items-center justify-center gap-2 transition-colors"
+               title="Ver Consentimiento Informado (Solo Lectura)"
+             >
                <FileText size={16} /> Consentimiento
-             </button>
-          ) : (
-             <button onClick={() => setShowConsentModal(true)} className="flex-1 md:flex-none px-4 py-2.5 border border-blue-200 text-white bg-blue-600 font-semibold text-sm rounded-xl hover:bg-blue-700 shadow-sm flex items-center justify-center gap-2 animate-pulse transition-colors">
-               <FileSignature size={16} /> Consentimiento
              </button>
           )}
 
@@ -307,14 +319,17 @@ const DonorDetail: React.FC<DonorDetailProps> = ({ donor, onBack, onEdit }) => {
               {/* TAB: GENERAL */}
               {activeTab === 'general' && (
                 <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
-                  <ConsentimientoStatus 
-                    donorId={donor.id} 
-                    donorName={donor.fullName} 
-                    isSigned={localConsentSigned} 
-                    consentDate={donor.consentDate}
-                    donorFolio={donor.folio}
-                    donorType={donor.type}
-                  />
+                  {/* Solo mostrar estatus de consentimiento si es HETERÓLOGA */}
+                  {donor.type === DonorType.HETEROLOGOUS && (
+                    <ConsentimientoStatus 
+                      donorId={donor.id} 
+                      donorName={donor.fullName} 
+                      isSigned={localConsentSigned} 
+                      consentDate={donor.consentDate}
+                      donorFolio={donor.folio}
+                      donorType={donor.type}
+                    />
+                  )}
                   
                   <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-8">
                     <h3 className="text-lg font-bold text-slate-800 mb-6 pb-4 border-b border-slate-100 flex items-center gap-2">
@@ -614,6 +629,13 @@ const DonorDetail: React.FC<DonorDetailProps> = ({ donor, onBack, onEdit }) => {
       </div>
 
       <ConsentimientoModal isOpen={showConsentModal} onClose={() => setShowConsentModal(false)} donorId={donor.id} donorName={donor.fullName} onSuccess={() => setLocalConsentSigned(true)} />
+      <ConsentimientoViewerModal 
+        isOpen={showConsentViewer} 
+        onClose={() => setShowConsentViewer(false)} 
+        donorName={donor.fullName}
+        donorFolio={donor.folio}
+        consentDate={donor.consentDate}
+      />
     </div>
   );
 };

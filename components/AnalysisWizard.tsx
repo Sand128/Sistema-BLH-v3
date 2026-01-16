@@ -20,8 +20,6 @@ const AnalysisWizard: React.FC<AnalysisWizardProps> = ({ batch, onComplete, onCa
   // STEP 1: HOLDER
   const [holderData, setHolderData] = useState({
     done: false,
-    tempMax: 62.5,
-    timeMin: 30,
     operator: 'Q.F.B. Actual'
   });
 
@@ -41,10 +39,6 @@ const AnalysisWizard: React.FC<AnalysisWizardProps> = ({ batch, onComplete, onCa
   });
 
   // --- HANDLERS ---
-
-  const handleHolderConfirm = () => {
-    setHolderData(prev => ({ ...prev, done: true }));
-  };
 
   const handleChemicalChange = (field: string, value: number) => {
     let classification = chemicalData.classification;
@@ -67,9 +61,9 @@ const AnalysisWizard: React.FC<AnalysisWizardProps> = ({ batch, onComplete, onCa
     if (physicalData.color === 'Rojo/Sangre' || physicalData.color === 'Verde/Pus' || physicalData.debris) {
       finalStatus = MilkStatus.DISCARDED;
       rejectionReason = "Falla en Análisis Físico (Color/Suciedad)";
-    } else if (chemicalData.acidity > 8) {
+    } else if (chemicalData.acidity > 8.0) {
       finalStatus = MilkStatus.DISCARDED;
-      rejectionReason = `Acidez elevada: ${chemicalData.acidity}°D`;
+      rejectionReason = `Acidez elevada: ${chemicalData.acidity.toFixed(2)}°D`;
     }
 
     const updatedBatch: MilkBatch = {
@@ -131,52 +125,46 @@ const AnalysisWizard: React.FC<AnalysisWizardProps> = ({ batch, onComplete, onCa
       <div className="flex-1 overflow-y-auto p-8 bg-slate-50/50 flex justify-center">
         <div className="w-full max-w-3xl">
           
-          {/* STEP 1: HOLDER */}
+          {/* STEP 1: HOLDER - SIMPLIFIED */}
           {step === 1 && (
             <div className="bg-white border border-slate-200 rounded-xl p-8 shadow-sm animate-in fade-in slide-in-from-right-4">
                <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
                  <Flame className="text-orange-500"/> Pasteurización Holder
                </h3>
                
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                 <div className="space-y-6">
-                    <div>
-                      <label className="block text-sm font-bold text-slate-700 mb-2">Temperatura Objetivo (°C)</label>
-                      <div className="flex items-center gap-2 p-3 bg-orange-50 border border-orange-100 rounded-lg">
-                        <Thermometer size={20} className="text-orange-600"/>
-                        <span className="text-xl font-bold text-slate-800">62.5</span>
-                      </div>
+               <div className="p-6 bg-slate-50 rounded-xl border border-slate-200">
+                  <div className="flex flex-col gap-6">
+                    <div className="bg-white p-6 rounded-lg border border-slate-200 hover:border-orange-300 transition-colors">
+                      <label className="flex items-start gap-4 cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          className="w-6 h-6 mt-1 text-orange-600 rounded focus:ring-orange-500 border-slate-300"
+                          checked={holderData.done}
+                          onChange={(e) => setHolderData(prev => ({ ...prev, done: e.target.checked }))}
+                        />
+                        <div className="flex-1">
+                          <span className="block font-bold text-slate-800 text-lg mb-1">
+                            Proceso de pasteurización realizado
+                          </span>
+                          <span className="text-sm text-slate-500 leading-relaxed block">
+                            Certifico que el lote ha completado el ciclo térmico satisfactoriamente y está listo para pasar a cuarentena microbiológica.
+                          </span>
+                        </div>
+                      </label>
                     </div>
-                    <div>
-                      <label className="block text-sm font-bold text-slate-700 mb-2">Tiempo de Ciclo (min)</label>
-                      <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-100 rounded-lg">
-                        <Activity size={20} className="text-blue-600"/>
-                        <span className="text-xl font-bold text-slate-800">30:00</span>
-                      </div>
-                    </div>
-                 </div>
 
-                 <div className="flex flex-col justify-center items-center p-6 bg-slate-50 rounded-xl border border-slate-200">
-                    {!holderData.done ? (
-                      <>
-                        <p className="text-sm text-slate-500 mb-4 text-center">
-                          Confirme que el equipo ha completado el ciclo térmico correctamente.
-                        </p>
-                        <button 
-                          onClick={handleHolderConfirm}
-                          className="w-full py-4 bg-orange-600 hover:bg-orange-700 text-white font-bold rounded-xl shadow-md flex items-center justify-center gap-2 transition-transform active:scale-95"
-                        >
-                          <CheckCircle2 size={24}/> Confirmar Ciclo Exitoso
-                        </button>
-                      </>
-                    ) : (
-                      <div className="text-center text-emerald-600 animate-in zoom-in">
-                        <CheckCircle2 size={48} className="mx-auto mb-2"/>
-                        <p className="font-bold text-lg">Pasteurización Registrada</p>
-                        <p className="text-xs text-emerald-800">Listo para siguiente fase</p>
-                      </div>
+                    {holderData.done && (
+                       <div className="p-4 bg-emerald-50 text-emerald-800 text-sm font-medium rounded-lg border border-emerald-100 flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
+                         <div className="bg-emerald-100 p-2 rounded-full">
+                           <CheckCircle2 size={20} className="text-emerald-600"/>
+                         </div>
+                         <div>
+                           <p className="font-bold">Acción Confirmada</p>
+                           <p className="text-emerald-700">El estado del lote cambiará a <strong>En Cuarentena</strong> al finalizar el asistente.</p>
+                         </div>
+                       </div>
                     )}
-                 </div>
+                  </div>
                </div>
             </div>
           )}
@@ -257,17 +245,27 @@ const AnalysisWizard: React.FC<AnalysisWizardProps> = ({ batch, onComplete, onCa
                      <label className="block text-sm font-bold text-purple-900 mb-2 uppercase">Acidez Dornic (°D)</label>
                      <div className="relative">
                        <input 
-                         type="number" step="0.1"
+                         type="number" 
+                         step="0.01"
                          className="w-full p-4 text-2xl font-bold border border-purple-200 rounded-xl text-center focus:ring-4 focus:ring-purple-200 outline-none"
-                         placeholder="0.0"
+                         placeholder="0.00"
                          value={chemicalData.acidity || ''}
                          onChange={(e) => handleChemicalChange('acidity', parseFloat(e.target.value))}
                        />
                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-purple-400 font-bold">°D</span>
                      </div>
-                     <p className="text-xs text-center mt-2 text-purple-700">
-                       {chemicalData.acidity > 8 ? '⚠️ Excede límite (>8°D)' : '✅ Dentro de rango (1-8°D)'}
-                     </p>
+                     <div className="text-xs text-center mt-2 h-5">
+                       {chemicalData.acidity > 0 && (
+                         chemicalData.acidity > 8.0 ? (
+                           <span className="text-red-600 font-bold flex items-center justify-center gap-1">⚠️ Excede límite (&gt;8.00°D)</span>
+                         ) : chemicalData.acidity < 1.0 ? (
+                           <span className="text-amber-600 font-bold flex items-center justify-center gap-1">⚠️ Valor bajo (&lt;1.00°D)</span>
+                         ) : (
+                           <span className="text-emerald-600 font-bold flex items-center justify-center gap-1">✅ Dentro de rango (1.00 - 8.00°D)</span>
+                         )
+                       )}
+                       {(!chemicalData.acidity || chemicalData.acidity === 0) && <span className="text-purple-400">Ingrese valor (1.00 - 8.00)</span>}
+                     </div>
                   </div>
 
                   <div className="bg-pink-50 p-6 rounded-xl border border-pink-100">
