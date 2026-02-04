@@ -29,13 +29,3 @@ El diseño busca simplicidad y claridad, con colores suaves y tipografía legibl
 
 ![Diseño interfaz](https://bbmundo.com/wp-content/uploads/2023/10/banco-de-leche-paso-a-paso.jpg)
 
----
-
-## 📁 Estructura del repositorio
-
-```bash
-/
-├── src/               # Código fuente frontend (React + TS)
-├── public/            # Recursos estáticos e imágenes
-├── docs/              # Documentación y diagramas
-└── README.md          # Este archivo de presentación
