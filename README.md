@@ -1,4 +1,4 @@
-# 🍼 Injeco - Sistema Banco de Leche Humana 🍼
+# 🍼 Donalac - Sistema Banco de Leche Humana 🍼
 
 ![Banner Banco de Leche](https://images.unsplash.com/photo-1588776814546-c0f2fef1ff83?ixlib=rb-4.0.3&auto=format&fit=crop&w=1350&q=80)
 
@@ -25,7 +25,7 @@ Este proyecto está orientado a mejorar la trazabilidad, seguridad y eficiencia 
 
 ## 🎨 Diseño y estética
 
-![Iconos y UI](https://cdn-icons-png.flaticon.com/512/2921/2921822.png)
+![Iconos y UI]([https://cdn-icons-png.flaticon.com/512/2921/2921822.png](https://cuidateplus.marca.com/familia/bebe/2021/10/28/banco-leche-materna-segun-expertos-179169.html))
 
 El diseño busca simplicidad y claridad, con colores suaves y tipografía legible para facilitar la interacción del personal clínico.
 
