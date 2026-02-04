@@ -27,7 +27,7 @@ Este proyecto está orientado a mejorar la trazabilidad, seguridad y eficiencia 
 
 El diseño busca simplicidad y claridad, con colores suaves y tipografía legible para facilitar la interacción del personal clínico.
 
-![Diseño interfaz](https://images.unsplash.com/photo-1588776814546-c0f2fef1ff83?ixlib=rb-4.0.3&auto=format&fit=crop&w=1350&q=80)
+![Diseño interfaz](https://bbmundo.com/wp-content/uploads/2023/10/banco-de-leche-paso-a-paso.jpg)
 
 ---
 
