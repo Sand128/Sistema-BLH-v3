@@ -1,4 +1,4 @@
-# 🍼 Donalac - Sistema Banco de Leche Humana 🍼
+# 🍼 Sistema-BLH-v3 - Sistema Banco de Leche Humana 🍼
 
 ![Banner Banco de Leche](https://images.unsplash.com/photo-1588776814546-c0f2fef1ff83?ixlib=rb-4.0.3&auto=format&fit=crop&w=1350&q=80)
 
@@ -6,7 +6,7 @@
 
 ## 💡 ¿Qué es Injeco?
 
-**Injeco** es un sistema digital diseñado para la gestión integral de un Banco de Leche Humana, facilitando el registro, control, y administración de donadoras, frascos, lotes y receptores en hospitales.
+**Sistema-BLH-v3** es un sistema digital diseñado para la gestión integral de un Banco de Leche Humana, facilitando el registro, control, y administración de donadoras, frascos, lotes y receptores en hospitales.
 
 Este proyecto está orientado a mejorar la trazabilidad, seguridad y eficiencia en la administración de leche materna donada.
 
@@ -25,7 +25,6 @@ Este proyecto está orientado a mejorar la trazabilidad, seguridad y eficiencia 
 
 ## 🎨 Diseño y estética
 
-![Iconos y UI]([https://cdn-icons-png.flaticon.com/512/2921/2921822.png](https://cuidateplus.marca.com/familia/bebe/2021/10/28/banco-leche-materna-segun-expertos-179169.html))
 
 El diseño busca simplicidad y claridad, con colores suaves y tipografía legible para facilitar la interacción del personal clínico.
 
