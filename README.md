@@ -1,7 +1,6 @@
 # 🍼 Sistema-BLH-v3 - Sistema Banco de Leche Humana 🍼
 
-![Banner Banco de Leche](https://images.unsplash.com/photo-1588776814546-c0f2fef1ff83?ixlib=rb-4.0.3&auto=format&fit=crop&w=1350&q=80)
-
+   Production Deployment in Vercel sistema-blh-v3.vercel.app
 ---
 
 ## 💡 ¿Qué es Injeco?
